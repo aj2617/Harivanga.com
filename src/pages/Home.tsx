@@ -1,0 +1,194 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, ShieldCheck, Truck, Leaf, Home as HomeIcon, LayoutDashboard } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ProductCard } from '../components/ProductCard';
+import { MOCK_PRODUCTS } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+
+export const Home: React.FC = () => {
+  const featuredProducts = MOCK_PRODUCTS.slice(0, 4);
+  const { isAdmin } = useAuth();
+
+  return (
+    <div className="flex flex-col">
+      {/* Hero Section */}
+      <section className="relative min-h-[calc(100vh-4rem)] sm:min-h-[680px] flex items-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&q=80&w=1920"
+            alt="Fresh Mangoes"
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-mango-dark/80 via-mango-dark/40 to-transparent" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-24 pb-14 sm:pb-20 relative z-10 w-full">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-3xl"
+          >
+            <span className="inline-block bg-mango-orange text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-full uppercase tracking-[0.2em] mb-6">
+              Season 2026 is Here
+            </span>
+            <h1 className="max-w-4xl text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white leading-[0.95] mb-6">
+              Farm Fresh <span className="text-mango-yellow">Mangoes</span>, Delivered to Your Door
+            </h1>
+            <p className="text-base sm:text-lg text-gray-200 mb-8 sm:mb-10 leading-relaxed max-w-2xl">
+              Experience the authentic taste of Rajshahi's finest mangoes. Naturally ripened, pesticide-free, and hand-picked for perfection.
+            </p>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 max-w-3xl">
+              <Link
+                to="/products"
+                className="w-full sm:w-auto bg-mango-orange hover:bg-mango-orange/90 text-white px-6 sm:px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-mango-orange/20 group"
+              >
+                Shop Now
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="w-full sm:w-auto bg-white text-mango-dark px-6 sm:px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl"
+                >
+                  <LayoutDashboard size={20} />
+                  Admin Dashboard
+                </Link>
+              )}
+              <Link
+                to="/about"
+                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 px-6 sm:px-8 py-4 rounded-2xl font-bold transition-all text-center"
+              >
+                Our Story
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Trust Bar */}
+      <section className="py-12 bg-mango-yellow/5 border-y border-mango-yellow/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
+                <Leaf size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">100% Fresh</h4>
+                <p className="text-xs text-gray-500">Direct from farm</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
+                <Truck size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">Fast Delivery</h4>
+                <p className="text-xs text-gray-500">Same day in Dhaka</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">Pesticide Free</h4>
+                <p className="text-xs text-gray-500">Naturally ripened</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
+                <HomeIcon size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">Farm to Table</h4>
+                <p className="text-xs text-gray-500">No middleman</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Products */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end mb-12">
+            <div>
+              <span className="text-mango-orange font-bold text-sm uppercase tracking-widest">Our Selection</span>
+              <h2 className="text-4xl font-black mt-2">Featured Varieties</h2>
+            </div>
+            <Link to="/products" className="text-mango-orange font-bold flex items-center gap-1 hover:underline">
+              View All <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us */}
+      <section className="py-24 bg-mango-dark text-white overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none">
+          <img 
+            src="https://images.unsplash.com/photo-1591073113125-e46713c829ed?auto=format&fit=crop&q=80&w=800" 
+            alt="Pattern" 
+            className="w-full h-full object-cover"
+          />
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-4xl font-black mb-8 leading-tight">
+                Why MangoBD is the <span className="text-mango-yellow">Trusted Choice</span> for Thousands
+              </h2>
+              <div className="space-y-8">
+                <div className="flex gap-6">
+                  <div className="shrink-0 w-12 h-12 bg-mango-orange rounded-2xl flex items-center justify-center font-bold text-xl">01</div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Authentic Origin</h3>
+                    <p className="text-gray-400 leading-relaxed">We source exclusively from Rajshahi and Chapainawabganj, the heartland of mangoes in Bangladesh.</p>
+                  </div>
+                </div>
+                <div className="flex gap-6">
+                  <div className="shrink-0 w-12 h-12 bg-mango-orange rounded-2xl flex items-center justify-center font-bold text-xl">02</div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Quality Control</h3>
+                    <p className="text-gray-400 leading-relaxed">Each mango is hand-inspected for ripeness, size, and quality before being packed in our eco-friendly boxes.</p>
+                  </div>
+                </div>
+                <div className="flex gap-6">
+                  <div className="shrink-0 w-12 h-12 bg-mango-orange rounded-2xl flex items-center justify-center font-bold text-xl">03</div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Fair Pricing</h3>
+                    <p className="text-gray-400 leading-relaxed">By cutting out middlemen, we ensure farmers get a fair price and you get premium quality at the best value.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl">
+                <img 
+                  src="https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&q=80&w=800" 
+                  alt="Farm" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-8 -left-8 bg-mango-orange p-8 rounded-3xl shadow-xl hidden md:block">
+                <p className="text-3xl font-black">10k+</p>
+                <p className="text-sm font-medium opacity-80 uppercase tracking-wider">Happy Customers</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};

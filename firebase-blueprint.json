@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A mango variety available for sale",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the mango variety" },
+        "description": { "type": "string", "description": "Detailed description of the variety" },
+        "image": { "type": "string", "description": "URL to the product image" },
+        "pricePerKg": { "type": "number", "description": "Base price per kg" },
+        "stock": { "type": "number", "description": "Available stock in kg" },
+        "variety": { "type": "string", "description": "Category/Variety tag (e.g., Himsagar, Langra)" },
+        "origin": { "type": "string", "description": "Origin of the mango (e.g., Rajshahi, Chapainawabganj)" },
+        "tasteProfile": { "type": "string", "description": "Description of the taste" },
+        "isAvailable": { "type": "boolean", "description": "Whether the product is currently in season" },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "weight": { "type": "string", "description": "Weight variant (e.g., 1kg, 5kg box)" },
+              "price": { "type": "number", "description": "Price for this variant" }
+            }
+          }
+        }
+      },
+      "required": ["name", "pricePerKg", "stock", "variety", "isAvailable"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "deliveryArea": { "type": "string" },
+        "deliveryDate": { "type": "string", "format": "date" },
+        "paymentMethod": { "type": "string", "enum": ["bKash", "Nagad", "Cash on Delivery"] },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productName": { "type": "string" },
+              "quantity": { "type": "number" },
+              "variant": { "type": "string" },
+              "price": { "type": "number" }
+            }
+          }
+        },
+        "subtotal": { "type": "number" },
+        "deliveryCharge": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "Confirmed", "Out for Delivery", "Delivered"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string", "description": "UID of the customer" }
+      },
+      "required": ["customerName", "customerPhone", "deliveryAddress", "items", "total", "status", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Extended user information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "customer"] },
+        "savedAddresses": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["role"]
+    }
+  },
+  "firestore": {
+    "/products": { "schema": "Product", "description": "Collection of available mangoes" },
+    "/orders": { "schema": "Order", "description": "Collection of customer orders" },
+    "/users": { "schema": "UserProfile", "description": "Collection of user profiles" }
+  }
+}

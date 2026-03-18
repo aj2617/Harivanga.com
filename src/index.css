@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-mango-yellow: #F5A623;
+  --color-mango-orange: #FF6B35;
+  --color-mango-dark: #1A1A1A;
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply text-mango-dark bg-white font-sans;
+  }
+}
+
+.glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20;
+}
+
