@@ -4,17 +4,27 @@ import { mapOrderRow, supabase } from '../supabase';
 import { Seo } from '../components/Seo';
 import { getLocalDevOrderById } from '../lib/localDevOrders';
 import { formatCurrency } from '../lib/format';
+import { getRecentOrderById } from '../lib/recentOrders';
 import { Order } from '../types';
 import { CheckCircle, Package, Truck, MessageCircle, ArrowRight, Calendar, MapPin } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export const OrderConfirmation: React.FC = () => {
   const { orderId } = useParams();
+  const { user, isAdmin } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrder = async () => {
       if (!orderId) {
+        setLoading(false);
+        return;
+      }
+
+      const recentOrder = getRecentOrderById(orderId);
+      if (recentOrder) {
+        setOrder(recentOrder);
         setLoading(false);
         return;
       }
@@ -26,11 +36,21 @@ export const OrderConfirmation: React.FC = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      if (!user && !isAdmin) {
+        setLoading(false);
+        return;
+      }
+
+      let query = supabase
         .from('orders')
         .select('*')
-        .eq('id', orderId)
-        .maybeSingle();
+        .eq('id', orderId);
+
+      if (!isAdmin && user) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) {
         console.error('Failed to load order', error);
@@ -40,7 +60,7 @@ export const OrderConfirmation: React.FC = () => {
       setLoading(false);
     };
     fetchOrder();
-  }, [orderId]);
+  }, [isAdmin, orderId, user]);
 
   if (loading) {
     return (

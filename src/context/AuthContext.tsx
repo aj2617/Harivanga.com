@@ -3,8 +3,6 @@ import type { User } from '@supabase/supabase-js';
 import { auth, mapUserProfileRow, mapUserProfileToRow, supabase } from '../supabase';
 import { UserProfile } from '../types';
 
-const ADMIN_EMAIL = 'ashadujjaman2617@gmail.com';
-
 function buildFallbackProfile(authUser: User, role: UserProfile['role']): UserProfile {
   const metadata = authUser.user_metadata ?? {};
   return {
@@ -40,8 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         setUser(authUser);
         if (authUser) {
-          const isAdminEmail = authUser.email === ADMIN_EMAIL;
-          const fallbackProfile = buildFallbackProfile(authUser, isAdminEmail ? 'admin' : 'customer');
+          const fallbackProfile = buildFallbackProfile(authUser, 'customer');
           const { data: existingProfileRow, error: profileError } = await supabase
             .from('users')
             .select('*')
@@ -57,18 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const mergedProfile: UserProfile = {
               ...fallbackProfile,
               ...existingProfile,
-              role: isAdminEmail ? 'admin' : existingProfile.role,
+              role: existingProfile.role,
             };
-
-            if (isAdminEmail && existingProfile.role !== 'admin') {
-              const { error: upsertError } = await supabase
-                .from('users')
-                .upsert(mapUserProfileToRow(mergedProfile), { onConflict: 'id' });
-
-              if (upsertError) {
-                throw upsertError;
-              }
-            }
 
             if (isMounted) {
               setProfile(mergedProfile);
@@ -94,8 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Failed to initialize auth state', error);
         if (!isMounted) return;
         if (authUser) {
-          const isAdminEmail = authUser.email === ADMIN_EMAIL;
-          setProfile(buildFallbackProfile(authUser, isAdminEmail ? 'admin' : 'customer'));
+          setProfile(buildFallbackProfile(authUser, 'customer'));
         } else {
           setProfile(null);
         }
@@ -128,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const isAdmin = profile?.role === 'admin' || user?.email === ADMIN_EMAIL;
+  const isAdmin = profile?.role === 'admin';
   const value = useMemo(() => ({ user, profile, loading, isAdmin }), [user, profile, loading, isAdmin]);
 
   return (

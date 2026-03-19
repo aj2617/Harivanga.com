@@ -1,17 +1,17 @@
 import { MOCK_PRODUCTS } from '../data/mockData';
 import { Product } from '../types';
+import { canUseDevelopmentFallbacks, isLocalDevelopmentHost } from './env';
 
 export const LOCAL_DEV_ADMIN_KEY = 'harivanga_local_admin_access';
 export const LOCAL_DEV_PRODUCTS_KEY = 'harivanga_local_products';
 export const LOCAL_DEV_PRODUCTS_UPDATED_EVENT = 'harivanga:local-products-updated';
 
 export function isLocalDevHost() {
-  if (typeof window === 'undefined') return false;
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return isLocalDevelopmentHost();
 }
 
 export function isLocalDevAdminMode() {
-  if (!isLocalDevHost() || typeof window === 'undefined') return false;
+  if (!canUseDevelopmentFallbacks() || typeof window === 'undefined') return false;
   return window.localStorage.getItem(LOCAL_DEV_ADMIN_KEY) === 'true';
 }
 

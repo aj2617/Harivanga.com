@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mapOrderRow, supabase } from '../supabase';
+import { mapOrderRow, signInWithGoogle, supabase } from '../supabase';
 import { Seo } from '../components/Seo';
 import { canUseLocalOrderFallback, findLocalDevOrdersByPhone } from '../lib/localDevOrders';
 import { formatCurrency } from '../lib/format';
 import { Order } from '../types';
 import { Search, Package, Clock, CheckCircle2, Truck, Phone } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '../context/AuthContext';
 
 const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, '');
 
 export const Account: React.FC = () => {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [phone, setPhone] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -31,6 +33,12 @@ export const Account: React.FC = () => {
     setHasSearched(true);
 
     try {
+      if (!canUseLocalOrderFallback() && !user) {
+        setOrders([]);
+        setSearchError('Sign in with Google to view your orders in production.');
+        return;
+      }
+
       const localOrders = findLocalDevOrdersByPhone(phone);
       const orderMap = new Map<string, Order>();
 
@@ -50,6 +58,7 @@ export const Account: React.FC = () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
+        .eq('user_id', user!.id)
         .eq('customer_phone_normalized', normalizedPhone)
         .order('created_at', { ascending: false });
 
@@ -92,9 +101,26 @@ export const Account: React.FC = () => {
           <div className="max-w-2xl">
             <h1 className="text-3xl font-black text-mango-dark">Track Your Order</h1>
             <p className="mt-3 text-gray-500">
-              No login needed. Enter the phone number used at checkout to view your latest order updates.
+              {canUseLocalOrderFallback()
+                ? 'Enter the phone number used at checkout to view your latest order updates.'
+                : 'Use your signed-in account and the checkout phone number to view your latest order updates.'}
             </p>
           </div>
+
+          {!canUseLocalOrderFallback() && !user && (
+            <div className="mt-6 rounded-2xl border border-mango-orange/20 bg-mango-orange/5 px-5 py-4">
+              <p className="text-sm text-mango-dark">
+                Production order lookup is restricted to the customer account that placed the order.
+              </p>
+              <button
+                type="button"
+                onClick={() => void signInWithGoogle()}
+                className="mt-3 rounded-2xl bg-mango-orange px-5 py-3 text-sm font-bold text-white transition-all hover:bg-mango-orange/90"
+              >
+                Sign In With Google
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleTrackOrders} className="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
             <label className="space-y-2">
@@ -106,6 +132,7 @@ export const Account: React.FC = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
+                disabled={!canUseLocalOrderFallback() && !user}
                 className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
               />
             </label>

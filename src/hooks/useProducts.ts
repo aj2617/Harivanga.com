@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { MOCK_PRODUCTS } from '../data/mockData';
 import {
   getLocalDevProducts,
   isLocalDevAdminMode,
   LOCAL_DEV_PRODUCTS_UPDATED_EVENT,
 } from '../lib/localDevProducts';
 import { STOREFRONT_PRODUCTS_CACHE_KEY, STOREFRONT_PRODUCTS_CHANGED_EVENT } from '../lib/storefrontSync';
+import { hasSupabaseConfig } from '../lib/env';
 import { mapProductRow, supabase } from '../supabase';
 import { Product } from '../types';
 
@@ -57,6 +57,7 @@ function writeCachedProducts(products: Product[]) {
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>(() => readCachedProducts() ?? []);
   const [loading, setLoading] = useState(() => readCachedProducts() == null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const win = typeof window !== 'undefined' ? window : null;
@@ -87,17 +88,25 @@ export function useProducts() {
 
       if (error) {
         console.error('Failed to load storefront products', error);
-        writeCachedProducts(MOCK_PRODUCTS);
-        setProducts(MOCK_PRODUCTS);
+        setError('Could not load the product catalog.');
+        setProducts([]);
         setLoading(false);
         return;
       }
 
       const nextProducts = (data ?? []).map(mapProductRow);
       writeCachedProducts(nextProducts);
+      setError(null);
       setProducts(nextProducts);
       setLoading(false);
     };
+
+    if (!hasSupabaseConfig) {
+      setProducts([]);
+      setError('Store configuration is incomplete.');
+      setLoading(false);
+      return;
+    }
 
     const cachedProducts = readCachedProducts();
     if (cachedProducts) {
@@ -153,5 +162,5 @@ export function useProducts() {
     };
   }, []);
 
-  return { products, loading };
+  return { products, loading, error };
 }

@@ -98,13 +98,20 @@ create policy "orders_public_insert"
 on public.orders
 for insert
 to anon, authenticated
-with check (true);
+with check (user_id is null or auth.uid() = user_id);
 
-create policy "orders_public_read"
+create policy "orders_read_own_or_admin"
 on public.orders
 for select
-to anon, authenticated
-using (true);
+to authenticated
+using (
+  user_id = auth.uid()
+  or exists (
+    select 1
+    from public.users
+    where users.id = auth.uid() and users.role = 'admin'
+  )
+);
 
 create policy "orders_admin_update"
 on public.orders

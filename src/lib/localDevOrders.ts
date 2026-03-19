@@ -1,13 +1,11 @@
 import { Order } from '../types';
-import { isLocalDevHost } from './localDevProducts';
+import { canUseDevelopmentFallbacks } from './env';
 
 export const LOCAL_DEV_ORDERS_KEY = 'harivanga_local_orders';
 export const LOCAL_DEV_ORDERS_UPDATED_EVENT = 'harivanga:local-orders-updated';
 
-const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
-
 export function canUseLocalOrderFallback() {
-  return isLocalDevHost() || !hasSupabaseConfig;
+  return canUseDevelopmentFallbacks();
 }
 
 export function getLocalDevOrders() {

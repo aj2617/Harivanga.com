@@ -4,9 +4,11 @@ import { mapOrderToRow, supabase } from '../supabase';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Seo } from '../components/Seo';
+import { hasSupabaseConfig } from '../lib/env';
 import { canUseLocalOrderFallback, saveLocalDevOrder } from '../lib/localDevOrders';
 import { CheckCircle2, CreditCard, Truck, MapPin, Phone, User as UserIcon, Building2, LocateFixed } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
+import { saveRecentOrder } from '../lib/recentOrders';
 
 const DISTRICTS_BY_DIVISION: Record<string, string[]> = {
   Barishal: ['Barguna', 'Barishal', 'Bhola', 'Jhalokathi', 'Patuakhali', 'Pirojpur'],
@@ -115,6 +117,7 @@ export const Checkout: React.FC = () => {
 
       if (canUseLocalOrderFallback()) {
         saveLocalDevOrder(localFallbackOrder);
+        saveRecentOrder(localFallbackOrder);
         clearCart();
         navigate(`/order-confirmation/${localFallbackOrderId}`);
         return;
@@ -135,12 +138,19 @@ export const Checkout: React.FC = () => {
         throw error;
       }
 
+      const savedOrder = {
+        id: data.id,
+        userId: user?.id,
+        ...orderBase,
+      };
+
       clearCart();
+      saveRecentOrder(savedOrder);
       navigate(`/order-confirmation/${data.id}`);
     } catch (error) {
       if (canUseLocalOrderFallback()) {
         const localFallbackOrderId = `local-order-${Date.now()}`;
-        saveLocalDevOrder({
+        const fallbackOrder = {
           id: localFallbackOrderId,
           userId: user?.id,
           customerName: formData.name,
@@ -163,16 +173,23 @@ export const Checkout: React.FC = () => {
           subtotal,
           deliveryCharge,
           total: subtotal + deliveryCharge,
-          status: 'Pending',
+          status: 'Pending' as const,
           createdAt: new Date().toISOString(),
-        });
+        };
+
+        saveLocalDevOrder(fallbackOrder);
+        saveRecentOrder(fallbackOrder);
         clearCart();
         navigate(`/order-confirmation/${localFallbackOrderId}`);
         return;
       }
 
       console.error('Checkout failed', error);
-      setSubmitError('Could not place the order right now. Please check your connection or Supabase setup and try again.');
+      setSubmitError(
+        hasSupabaseConfig
+          ? 'Could not place the order right now. Please check your connection and try again.'
+          : 'Store configuration is incomplete. Add the required Supabase environment variables before going live.'
+      );
     } finally {
       setIsSubmitting(false);
     }

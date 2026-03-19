@@ -1,10 +1,11 @@
 import { createClient, type User } from '@supabase/supabase-js';
 import { Order, OrderStatus, Product, ProductVariant, UserProfile } from './types';
+import { hasSupabaseConfig } from './lib/env';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://example.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'supabase-anon-key';
 
-if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+if (!hasSupabaseConfig) {
   console.warn('Supabase environment variables are missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 }
 

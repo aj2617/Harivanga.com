@@ -18,8 +18,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
+import { canUseDevelopmentFallbacks } from '../lib/env';
 
-const ADMIN_EMAIL = 'ashadujjaman2617@gmail.com';
 const LOCAL_DEV_ADMIN_EMAIL = 'admin@local';
 const LOCAL_DEV_ADMIN_PASSWORD = 'admin1234';
 type AdminTab = 'overview' | 'products' | 'orders' | 'settings';
@@ -202,7 +202,7 @@ export const AdminDashboard: React.FC = () => {
   const [newZoneCharge, setNewZoneCharge] = useState('');
   const [settingsForm, setSettingsForm] = useState<AdminSettings>(loadSettings);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : ADMIN_EMAIL);
+  const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : '');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const [isAdminAuthenticating, setIsAdminAuthenticating] = useState(false);
@@ -631,11 +631,6 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    if (normalizedEmail !== ADMIN_EMAIL) {
-      setAdminLoginError('Use the authorized admin email for this portal.');
-      return;
-    }
-
     setIsAdminAuthenticating(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -647,7 +642,17 @@ export const AdminDashboard: React.FC = () => {
         throw error;
       }
 
-      if (data.user?.email?.toLowerCase() !== ADMIN_EMAIL) {
+      const { data: profileRow, error: profileError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      if (profileRow?.role !== 'admin') {
         await supabase.auth.signOut();
         setAdminLoginError('This account does not have admin access.');
       }
@@ -733,7 +738,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 )}
 
-                {localHost && (
+                {canUseDevelopmentFallbacks() && (
                   <div className="rounded-[16px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-xs font-medium text-[#b8c7ea]">
                     Local test login: <span className="font-bold text-white">{LOCAL_DEV_ADMIN_EMAIL}</span> / <span className="font-bold text-white">{LOCAL_DEV_ADMIN_PASSWORD}</span>
                   </div>
@@ -981,12 +986,14 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h1 className="text-2xl sm:text-3xl font-black text-mango-dark">Overview</h1>
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <button 
-                  onClick={handleSeedDatabase}
-                  className="text-xs font-bold text-mango-orange hover:underline"
-                >
-                  Seed Database
-                </button>
+                {canUseDevelopmentFallbacks() && (
+                  <button 
+                    onClick={handleSeedDatabase}
+                    className="text-xs font-bold text-mango-orange hover:underline"
+                  >
+                    Seed Database
+                  </button>
+                )}
                 <div className="text-sm text-gray-400 font-medium">{format(new Date(), 'PPPP')}</div>
               </div>
             </div>
