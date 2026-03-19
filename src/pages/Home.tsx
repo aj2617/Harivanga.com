@@ -1,15 +1,36 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ShieldCheck, Truck, Leaf, Home as HomeIcon } from 'lucide-react';
-import { motion } from 'motion/react';
 import { ProductCard } from '../components/ProductCard';
-import { MOCK_PRODUCTS } from '../data/mockData';
+import { Seo } from '../components/Seo';
+import { useProducts } from '../hooks/useProducts';
 
 export const Home: React.FC = () => {
-  const featuredProducts = MOCK_PRODUCTS.slice(0, 4);
+  const { products } = useProducts();
+  const featuredProducts = products.slice(0, 4);
 
   return (
     <div className="flex flex-col">
+      <Seo
+        title="Harivanga Mangoes From Podaganj, Mithapukur, Rangpur"
+        description="Order authentic Harivanga mangoes and premium seasonal varieties from Podaganj, Mithapukur, Rangpur. Tree-ripened, chemical-free, and delivered fresh."
+        path="/"
+        keywords={['Harivanga', 'Harivanga mango', 'Podaganj mango', 'Rangpur mango', 'buy mango online Bangladesh']}
+        schema={{
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'Harivanga.com',
+          url: 'https://harivanga.com/',
+          description:
+            'Order authentic Harivanga mangoes and premium seasonal varieties from Podaganj, Mithapukur, Rangpur.',
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: 'https://harivanga.com/products',
+            'query-input': 'required name=search_term_string',
+          },
+        }}
+      />
+
       {/* Hero Section */}
       <section className="relative min-h-[calc(100vh-4rem)] sm:min-h-[680px] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -18,17 +39,16 @@ export const Home: React.FC = () => {
             alt="Fresh Mangoes"
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-mango-dark/80 via-mango-dark/40 to-transparent" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-24 pb-14 sm:pb-20 relative z-10 w-full">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            className="max-w-3xl"
-          >
+          <div className="max-w-3xl fade-up-enter">
             <span className="inline-block bg-mango-orange text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-full uppercase tracking-[0.2em] mb-6">
               Season 2026 is Here
             </span>
@@ -36,7 +56,7 @@ export const Home: React.FC = () => {
               Farm Fresh <span className="text-mango-yellow">Mangoes</span>, Delivered to Your Door
             </h1>
             <p className="text-base sm:text-lg text-gray-200 mb-8 sm:mb-10 leading-relaxed max-w-2xl">
-              Experience the authentic taste of Rajshahi's finest mangoes. Naturally ripened, pesticide-free, and hand-picked for perfection.
+              Straight from Podaganj&apos;s legendary red-soil farms — where the world&apos;s best Harivanga grows. Tree-ripened, chemical-free, delivered fresh.
             </p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 max-w-3xl">
               <Link
@@ -53,12 +73,12 @@ export const Home: React.FC = () => {
                 Our Story
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Trust Bar */}
-      <section className="py-12 bg-mango-yellow/5 border-y border-mango-yellow/10">
+      <section className="py-12 bg-mango-yellow/5 border-y border-mango-yellow/10 [content-visibility:auto] [contain-intrinsic-size:1px_480px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="flex flex-col items-center text-center gap-3">
@@ -76,7 +96,7 @@ export const Home: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-bold text-sm">Fast Delivery</h4>
-                <p className="text-xs text-gray-500">Same day in Dhaka</p>
+                <p className="text-xs text-gray-500">Within 2 days</p>
               </div>
             </div>
             <div className="flex flex-col items-center text-center gap-3">
@@ -102,7 +122,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Featured Products */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white [content-visibility:auto] [contain-intrinsic-size:1px_900px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end mb-12">
             <div>
@@ -123,12 +143,14 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-24 bg-mango-dark text-white overflow-hidden relative">
+      <section className="py-24 bg-mango-dark text-white overflow-hidden relative [content-visibility:auto] [contain-intrinsic-size:1px_1100px]">
         <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none">
           <img 
-            src="https://images.unsplash.com/photo-1591073113125-e46713c829ed?auto=format&fit=crop&q=80&w=800" 
+            src="https://images.unsplash.com/photo-1591073113125-e46713c829ed?auto=format&fit=crop&q=72&w=640" 
             alt="Pattern" 
             className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
           />
         </div>
         
@@ -143,7 +165,7 @@ export const Home: React.FC = () => {
                   <div className="shrink-0 w-12 h-12 bg-mango-orange rounded-2xl flex items-center justify-center font-bold text-xl">01</div>
                   <div>
                     <h3 className="text-xl font-bold mb-2">Authentic Origin</h3>
-                    <p className="text-gray-400 leading-relaxed">We source exclusively from Rajshahi and Chapainawabganj, the heartland of mangoes in Bangladesh.</p>
+                    <p className="text-gray-400 leading-relaxed">We source from Podaganj, Mithapukur, Rangpur, where Harivanga grows in its signature red-soil terroir.</p>
                   </div>
                 </div>
                 <div className="flex gap-6">
@@ -165,9 +187,11 @@ export const Home: React.FC = () => {
             <div className="relative">
               <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl">
                 <img 
-                  src="https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&q=80&w=800" 
+                  src="https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&q=72&w=640" 
                   alt="Farm" 
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div className="absolute -bottom-8 -left-8 bg-mango-orange p-8 rounded-3xl shadow-xl hidden md:block">

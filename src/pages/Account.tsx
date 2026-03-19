@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mapOrderRow, supabase } from '../supabase';
+import { Seo } from '../components/Seo';
+import { canUseLocalOrderFallback, findLocalDevOrdersByPhone } from '../lib/localDevOrders';
 import { Order } from '../types';
 import { Search, Package, Clock, CheckCircle2, Truck, Phone } from 'lucide-react';
-import { motion } from 'motion/react';
 import { format } from 'date-fns';
 
 const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, '');
@@ -29,11 +30,26 @@ export const Account: React.FC = () => {
     setHasSearched(true);
 
     try {
+      const localOrders = findLocalDevOrdersByPhone(phone);
+      const orderMap = new Map<string, Order>();
+
+      localOrders.forEach((order) => {
+        orderMap.set(order.id, order);
+      });
+
+      if (canUseLocalOrderFallback()) {
+        setOrders(
+          Array.from(orderMap.values()).sort(
+            (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+          ).slice(0, 1)
+        );
+        return;
+      }
+
       const snapshots = await Promise.all([
         supabase.from('orders').select('*').eq('customer_phone_normalized', normalizedPhone),
-        supabase.from('orders').select('*').eq('customer_phone', phone.trim()),
+        supabase.from('orders').select('*').eq('customer_phone_normalized', normalizedPhone),
       ]);
-      const orderMap = new Map<string, Order>();
 
       snapshots.forEach(({ data, error }) => {
         if (error) {
@@ -50,9 +66,16 @@ export const Account: React.FC = () => {
         (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
       );
 
-      setOrders(matchedOrders);
+      setOrders(matchedOrders.slice(0, 1));
     } catch (error) {
       console.error('Failed to track orders by phone number', error);
+      const fallbackOrders = findLocalDevOrdersByPhone(phone);
+      if (fallbackOrders.length > 0) {
+        setOrders(fallbackOrders.slice(0, 1));
+        setSearchError(null);
+        return;
+      }
+
       setOrders([]);
       setSearchError('Could not check order status right now. Please try again.');
     } finally {
@@ -62,12 +85,10 @@ export const Account: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      <Seo title="Track Order" description="Track your mango order by phone number." path="/account" robots="noindex,nofollow" />
+
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm"
-        >
+        <div className="fade-up-enter bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
           <div className="max-w-2xl">
             <h1 className="text-3xl font-black text-mango-dark">Track Your Order</h1>
             <p className="mt-3 text-gray-500">
@@ -109,11 +130,9 @@ export const Account: React.FC = () => {
             {orders.length > 0 ? (
               <div className="space-y-6">
                 {orders.map((order) => (
-                  <motion.div
+                  <div
                     key={order.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+                    className="fade-up-enter bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
                   >
                     <div className="p-6 md:p-8">
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -166,7 +185,7 @@ export const Account: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             ) : hasSearched ? (
@@ -193,7 +212,7 @@ export const Account: React.FC = () => {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

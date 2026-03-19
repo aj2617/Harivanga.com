@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { ArrowRight, Clock3, Leaf, MapPin, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowRight, Clock3, Leaf, MapPin, ShieldCheck, Sprout, SunMedium, Truck, Trophy } from 'lucide-react';
+import { Seo } from '../components/Seo';
 
 type InfoSection = {
   heading: string;
@@ -17,18 +18,26 @@ type InfoPageContent = {
 
 const INFO_PAGE_CONTENT: Record<string, InfoPageContent> = {
   '/about': {
-    eyebrow: 'About Harivanga.com',
-    title: 'Our Story',
-    intro: 'Harivanga.com connects customers directly with trusted orchards in Rajshahi and Chapainawabganj so fresh mangoes reach homes quickly and in peak condition.',
-    highlights: ['Direct orchard sourcing', 'Naturally ripened fruit', 'Reliable Dhaka delivery'],
+    eyebrow: 'হরিভাঙ্গার গল্প',
+    title: 'আমাদের গল্প',
+    intro: 'Harivanga.com পদাগঞ্জের আসল বাগান থেকে গাছপাকা, রাসায়নিকমুক্ত হরিভাঙ্গা সংগ্রহ করে সরাসরি গ্রাহকের ঘরে পৌঁছে দেয়। আমাদের লক্ষ্য একটাই — রংপুরের লাল মাটির সেই অনন্য স্বাদ কোনো আপোস ছাড়া পৌঁছে দেওয়া।',
+    highlights: ['পদাগঞ্জের আসল বাগান', 'গাছপাকা ও রাসায়নিকমুক্ত', 'সরাসরি দরজায় ডেলিভারি'],
     sections: [
       {
-        heading: 'How we source',
-        body: 'We work with growers who follow seasonal harvesting schedules and avoid harmful ripening shortcuts. Each batch is selected for taste, texture, and transport readiness.'
+        heading: 'শুরুর গল্প',
+        body: 'রংপুরের মিঠাপুকুর উপজেলার পদাগঞ্জের খোরাগাছ ইউনিয়নের তেকানি গ্রামে বহু বছর আগে নাফাল উদ্দিন পাইকার তাঁর জমিতে একটি আমগাছের চারা রোপণ করেন। প্রতিকূল মাটি, তীব্র রোদ আর খরার মধ্যেও তিনি বিশেষ ব্যবস্থায় গাছের গোড়ায় ধীরে ধীরে পানি দিতেন। সেই যত্নের ফলেই জন্ম নেয় এমন এক আম, যার স্বাদ, ঘ্রাণ ও রসালত্ব গ্রামবাসীকে প্রথম ফলনেই বিস্মিত করেছিল।'
       },
       {
-        heading: 'Why customers choose us',
-        body: 'The focus is simple: consistent quality, honest pricing, and clear order communication from checkout through delivery.'
+        heading: 'লাল মাটির স্বাদ',
+        body: 'পদাগঞ্জের খনিজসমৃদ্ধ লাল মাটি, রংপুরের আবহাওয়া, মৌসুমি বৃষ্টি এবং ধীর প্রাকৃতিক পাকার প্রক্রিয়া হরিভাঙ্গাকে দিয়েছে আলাদা পরিচয়। এই আমে কোনো কৃত্রিম রঙ বা রাসায়নিক পাকানোর প্রয়োজন হয় না। গাছেই ধীরে ধীরে পাকে, আর পাকলে খোসায় ফুটে ওঠে হালকা লালচে আভা — যেন মাটির নিজস্ব রঙ ফলের গায়ে এসে বসে।'
+      },
+      {
+        heading: 'বাংলাদেশের গর্ব',
+        body: 'হরিভাঙ্গা আজ শুধু একটি ফল নয়, এটি উত্তরবঙ্গের কৃষি ঐতিহ্য ও গর্বের প্রতীক। ভৌগোলিক নির্দেশক (GI) স্বীকৃত এই আমের জন্য মৌসুমে দেশের বিভিন্ন অঞ্চল থেকে পাইকাররা পদাগঞ্জে ছুটে আসেন। বিশেষ করে আম মৌসুমের শেষভাগে, যখন অন্যান্য জাতের আম কমে আসে, তখন হরিভাঙ্গা আসে সেরা বিদায়ী উপহার হয়ে।'
+      },
+      {
+        heading: 'Harivanga.com-এর প্রতিশ্রুতি',
+        body: 'আমরা পদাগঞ্জের বিশ্বস্ত বাগান থেকে বাছাই করা হরিভাঙ্গা সংগ্রহ করি, যাতে মধ্যস্বত্বভোগীর কারণে মান বা সতেজতায় কোনো ঘাটতি না থাকে। প্রতিটি চালানে আমরা গুরুত্ব দিই আসল স্বাদ, নিরাপদ সংগ্রহ, এবং গ্রাহকের হাতে সর্বোচ্চ মানের হরিভাঙ্গা পৌঁছে দেওয়ায়। কারণ একবার আসল হরিভাঙ্গার স্বাদ পেলে, সেটি ভোলা কঠিন।'
       }
     ]
   },
@@ -115,13 +124,34 @@ const INFO_PAGE_CONTENT: Record<string, InfoPageContent> = {
 };
 
 const PAGE_ICONS = [Leaf, Truck, ShieldCheck, Clock3];
+const ABOUT_SECTION_ICONS = [Sprout, SunMedium, Trophy, ShieldCheck];
 
 export const InfoPage: React.FC = () => {
   const { pathname } = useLocation();
   const page = INFO_PAGE_CONTENT[pathname] ?? INFO_PAGE_CONTENT['/about'];
+  const isAboutPage = pathname === '/about';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen ${isAboutPage ? 'bg-[radial-gradient(circle_at_top,#fff7eb_0%,#fffdf9_38%,#f7f7f5_100%)]' : 'bg-gray-50'}`}>
+      <Seo
+        title={page.title}
+        description={page.intro}
+        path={pathname}
+        type={isAboutPage ? 'article' : 'website'}
+        keywords={
+          isAboutPage
+            ? ['Harivanga story', 'Podaganj', 'Mithapukur', 'Rangpur', 'GI mango Bangladesh']
+            : [page.title, 'Harivanga.com', 'mango delivery Bangladesh']
+        }
+        schema={{
+          '@context': 'https://schema.org',
+          '@type': isAboutPage ? 'AboutPage' : 'WebPage',
+          name: page.title,
+          description: page.intro,
+          url: `https://harivanga.com${pathname}`,
+        }}
+      />
+
       <section className="bg-mango-dark text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
           <p className="text-xs font-bold uppercase tracking-[0.35em] text-mango-yellow/80">{page.eyebrow}</p>
@@ -147,15 +177,75 @@ export const InfoPage: React.FC = () => {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-8">
           <div className="space-y-6">
-            {page.sections.map((section) => (
-              <article key={section.heading} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 sm:p-8">
-                <h2 className="text-2xl font-black text-mango-dark">{section.heading}</h2>
-                <p className="mt-4 text-gray-600 leading-relaxed">{section.body}</p>
-              </article>
-            ))}
+            {page.sections.map((section, index) => {
+              const SectionIcon = ABOUT_SECTION_ICONS[index % ABOUT_SECTION_ICONS.length];
+
+              return (
+                <article
+                  key={section.heading}
+                  className={`group relative overflow-hidden rounded-[2rem] border p-6 shadow-sm transition duration-300 sm:p-8 ${
+                    isAboutPage
+                      ? 'border-[#eadfce] bg-[linear-gradient(180deg,#fffaf4_0%,#ffffff_100%)] shadow-[0_18px_45px_rgba(59,31,14,0.08)] hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(59,31,14,0.12)]'
+                      : 'border-gray-100 bg-white'
+                  }`}
+                >
+                  {isAboutPage && (
+                    <>
+                      <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-mango-orange via-[#d29a2f] to-transparent" />
+                      <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-[#f8ecdb] blur-2xl transition duration-300 group-hover:scale-110" />
+                      <div className="absolute right-5 top-5 text-[4rem] font-black leading-none text-[#f4eadc]">
+                        {(index + 1).toString().padStart(2, '0')}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="relative z-10">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-center gap-4">
+                        {isAboutPage && (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-mango-orange text-white shadow-lg shadow-mango-orange/20">
+                            <SectionIcon size={20} />
+                          </div>
+                        )}
+                        <div>
+                          {isAboutPage && (
+                            <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#b27b32]">Section {(index + 1).toString().padStart(2, '0')}</p>
+                          )}
+                          <h2 className={`mt-1 text-2xl font-black ${isAboutPage ? 'text-[#23170d]' : 'text-mango-dark'}`}>{section.heading}</h2>
+                        </div>
+                      </div>
+
+                      {isAboutPage && (
+                        <span className="inline-flex w-fit rounded-full border border-[#eed8bb] bg-white/80 px-3 py-1 text-xs font-semibold text-[#8f6130]">
+                          Harivanga Heritage
+                        </span>
+                      )}
+                    </div>
+
+                    <p className={`mt-5 leading-relaxed ${isAboutPage ? 'text-lg text-[#5a4b3d]' : 'text-gray-600'}`}>{section.body}</p>
+                  </div>
+                </article>
+              );
+            })}
           </div>
 
-          <aside className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 sm:p-8 h-fit">
+          <aside
+            className={`h-fit rounded-3xl border p-6 shadow-sm sm:p-8 ${
+              isAboutPage
+                ? 'border-[#eadfce] bg-[linear-gradient(180deg,#fff4e2_0%,#fffaf4_100%)] shadow-[0_18px_45px_rgba(59,31,14,0.08)]'
+                : 'border-gray-100 bg-white'
+            }`}
+          >
+            {isAboutPage && (
+              <div className="mb-6 rounded-[1.75rem] bg-mango-dark px-5 py-5 text-white">
+                <p className="text-xs font-bold uppercase tracking-[0.32em] text-mango-yellow/80">From Podaganj</p>
+                <p className="mt-3 text-2xl font-black leading-tight">Authentic Harivanga, rooted in Rangpur&apos;s red soil.</p>
+                <p className="mt-3 text-sm leading-relaxed text-white/75">
+                  Tree-ripened, chemical-free, and sourced from trusted orchard partners in the Harivanga heartland.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-2xl bg-mango-orange/10 text-mango-orange flex items-center justify-center">
                 <MapPin size={20} />

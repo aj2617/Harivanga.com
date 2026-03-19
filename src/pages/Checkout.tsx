@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { handleDatabaseError, mapOrderToRow, OperationType, supabase } from '../supabase';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle2, CreditCard, Truck, MapPin, Phone, User as UserIcon, Calendar, Building2, LocateFixed } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Seo } from '../components/Seo';
+import { canUseLocalOrderFallback, saveLocalDevOrder } from '../lib/localDevOrders';
+import { CheckCircle2, CreditCard, Truck, MapPin, Phone, User as UserIcon, Building2, LocateFixed } from 'lucide-react';
 
 const DISTRICTS_BY_DIVISION: Record<string, string[]> = {
   Barishal: ['Barguna', 'Barishal', 'Bhola', 'Jhalokathi', 'Patuakhali', 'Pirojpur'],
@@ -33,11 +34,11 @@ export const Checkout: React.FC = () => {
     division: 'Dhaka',
     district: 'Dhaka',
     deliveryMethod: 'Home Delivery' as DeliveryMethod,
-    deliveryDate: new Date().toISOString().split('T')[0],
     paymentMethod: 'Cash on Delivery' as 'bKash' | 'Nagad' | 'Cash on Delivery',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const divisionOptions = Object.keys(DISTRICTS_BY_DIVISION);
   const districtOptions = DISTRICTS_BY_DIVISION[formData.division];
@@ -64,7 +65,9 @@ export const Checkout: React.FC = () => {
       return;
     }
 
+    const orderDate = new Date().toISOString().split('T')[0];
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const orderBase = {
         customerName: formData.name,
@@ -75,7 +78,7 @@ export const Checkout: React.FC = () => {
         deliveryDivision: formData.division,
         deliveryDistrict: formData.district,
         deliveryMethod: formData.deliveryMethod,
-        deliveryDate: formData.deliveryDate,
+        deliveryDate: orderDate,
         paymentMethod: formData.paymentMethod,
         items: cart.map((item) => ({
           productId: item.productId,
@@ -90,6 +93,20 @@ export const Checkout: React.FC = () => {
         status: 'Pending' as const,
         createdAt: new Date().toISOString(),
       };
+
+      const localFallbackOrderId = `local-order-${Date.now()}`;
+      const localFallbackOrder = {
+        id: localFallbackOrderId,
+        userId: user?.id,
+        ...orderBase,
+      };
+
+      if (canUseLocalOrderFallback()) {
+        saveLocalDevOrder(localFallbackOrder);
+        clearCart();
+        navigate(`/order-confirmation/${localFallbackOrderId}`);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('orders')
@@ -109,7 +126,41 @@ export const Checkout: React.FC = () => {
       clearCart();
       navigate(`/order-confirmation/${data.id}`);
     } catch (error) {
-      handleDatabaseError(error, OperationType.CREATE, 'orders');
+      if (canUseLocalOrderFallback()) {
+        const localFallbackOrderId = `local-order-${Date.now()}`;
+        saveLocalDevOrder({
+          id: localFallbackOrderId,
+          userId: user?.id,
+          customerName: formData.name,
+          customerPhone: formData.phone,
+          customerPhoneNormalized: normalizePhoneNumber(formData.phone),
+          deliveryAddress: formData.address,
+          deliveryArea: deliveryAreaLabel,
+          deliveryDivision: formData.division,
+          deliveryDistrict: formData.district,
+          deliveryMethod: formData.deliveryMethod,
+          deliveryDate: orderDate,
+          paymentMethod: formData.paymentMethod,
+          items: cart.map((item) => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            variant: item.variant,
+            price: item.price,
+          })),
+          subtotal,
+          deliveryCharge,
+          total: subtotal + deliveryCharge,
+          status: 'Pending',
+          createdAt: new Date().toISOString(),
+        });
+        clearCart();
+        navigate(`/order-confirmation/${localFallbackOrderId}`);
+        return;
+      }
+
+      console.error('Checkout failed', error);
+      setSubmitError('Could not place the order right now. Please check your connection or Supabase setup and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -117,14 +168,12 @@ export const Checkout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      <Seo title="Checkout" description="Complete your mango order securely." path="/checkout" robots="noindex,nofollow" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100"
-            >
+            <div className="fade-up-enter bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
               <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
                 <div className="w-10 h-10 bg-mango-orange/10 text-mango-orange rounded-xl flex items-center justify-center">
                   <Truck size={20} />
@@ -251,26 +300,10 @@ export const Checkout: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
-                      <Calendar size={14} /> Preferred Delivery Date
-                    </label>
-                    <input
-                      required
-                      type="date"
-                      min={new Date().toISOString().split('T')[0]}
-                      value={formData.deliveryDate}
-                      onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20 focus:border-mango-orange transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Selected Delivery Route</label>
-                    <div className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 text-sm font-semibold text-mango-dark">
-                      {deliveryAreaLabel}
-                    </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Selected Delivery Route</label>
+                  <div className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 text-sm font-semibold text-mango-dark">
+                    {deliveryAreaLabel}
                   </div>
                 </div>
 
@@ -307,8 +340,13 @@ export const Checkout: React.FC = () => {
                 >
                   {isSubmitting ? 'Processing Order...' : `Place Order - ৳${subtotal + deliveryCharge}`}
                 </button>
+                {submitError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {submitError}
+                  </div>
+                )}
               </form>
-            </motion.div>
+            </div>
           </div>
 
           <div className="lg:col-span-1">

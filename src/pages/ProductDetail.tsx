@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
@@ -13,18 +13,34 @@ import {
   Plus,
   Zap,
 } from 'lucide-react';
-import { MOCK_PRODUCTS } from '../data/mockData';
 import { useCart } from '../context/CartContext';
-import { motion } from 'motion/react';
+import { Seo } from '../components/Seo';
+import { useProducts } from '../hooks/useProducts';
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart, replaceCart } = useCart();
+  const { products, loading } = useProducts();
 
-  const product = MOCK_PRODUCTS.find((p) => p.id === id);
+  const product = products.find((p) => p.id === id);
   const [selectedVariant, setSelectedVariant] = useState(product?.variants[0] || null);
+  const [selectedImage, setSelectedImage] = useState(product?.image || product?.images?.[0] || '');
   const [quantity, setQuantity] = useState(1);
+  const galleryImages = product ? [product.image, ...(product.images ?? []).filter((image) => image !== product.image)] : [];
+
+  useEffect(() => {
+    setSelectedVariant(product?.variants[0] || null);
+    setSelectedImage(product?.image || product?.images?.[0] || '');
+  }, [product]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mango-orange"></div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -73,6 +89,46 @@ export const ProductDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white pb-24">
+      <Seo
+        title={product ? `${product.name} - ${product.variety}` : 'Product Details'}
+        description={
+          product
+            ? `${product.description} Origin: ${product.origin}. Taste profile: ${product.tasteProfile}. Starting from ৳${product.pricePerKg}/kg.`
+            : 'Explore authentic Harivanga and premium mango details, pricing, and delivery options.'
+        }
+        path={product ? `/product/${product.id}` : `/product/${id ?? ''}`}
+        image={product?.image}
+        type="product"
+        keywords={
+          product
+            ? [product.name, product.variety, `${product.origin} mango`, 'buy mango online Bangladesh']
+            : ['Harivanga mango', 'mango product details']
+        }
+        schema={
+          product
+            ? {
+                '@context': 'https://schema.org',
+                '@type': 'Product',
+                name: product.name,
+                image: [product.image, ...(product.images ?? [])],
+                description: product.description,
+                category: product.variety,
+                brand: {
+                  '@type': 'Brand',
+                  name: 'Harivanga.com',
+                },
+                offers: {
+                  '@type': 'Offer',
+                  priceCurrency: 'BDT',
+                  price: product.variants[0]?.price ?? product.pricePerKg,
+                  availability: product.isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                  url: `https://harivanga.com/product/${product.id}`,
+                },
+              }
+            : null
+        }
+      />
+
       <div className="bg-gray-50 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -91,26 +147,52 @@ export const ProductDetail: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative aspect-square rounded-3xl overflow-hidden bg-gray-100 group"
-          >
-            <img
-              src={product.image}
-              alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute top-6 left-6 flex flex-col gap-2">
-              <span className="bg-mango-orange text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
-                {product.variety}
-              </span>
-              <span className="bg-white text-mango-dark text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg flex items-center gap-1">
-                <MapPin size={10} /> {product.origin}
-              </span>
+          <div className="space-y-4 fade-up-enter">
+            <div className="relative aspect-square rounded-3xl overflow-hidden bg-gray-100 group">
+              <img
+                src={selectedImage || product.image}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                referrerPolicy="no-referrer"
+                decoding="async"
+                fetchPriority="high"
+                sizes="(min-width: 1024px) 50vw, 100vw"
+              />
+              <div className="absolute top-6 left-6 flex flex-col gap-2">
+                <span className="bg-mango-orange text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                  {product.variety}
+                </span>
+                <span className="bg-white text-mango-dark text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg flex items-center gap-1">
+                  <MapPin size={10} /> {product.origin}
+                </span>
+              </div>
             </div>
-          </motion.div>
+
+            {galleryImages.length > 1 && (
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {galleryImages.map((image, index) => {
+                  const isActive = image === (selectedImage || product.image);
+                  return (
+                    <button
+                      key={`${image}-${index}`}
+                      type="button"
+                      onClick={() => setSelectedImage(image)}
+                      className={`overflow-hidden rounded-2xl border-2 ${isActive ? 'border-mango-orange' : 'border-transparent'}`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} view ${index + 1}`}
+                        className="aspect-square h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        sizes="(min-width: 640px) 25vw, 33vw"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-mango-yellow mb-4">

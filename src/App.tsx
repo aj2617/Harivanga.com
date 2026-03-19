@@ -1,45 +1,71 @@
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
-import { Layout } from './components/Layout';
-import { Home } from './pages/Home';
-import { ProductListing } from './pages/ProductListing';
-import { ProductDetail } from './pages/ProductDetail';
-import { CartPage } from './pages/CartPage';
-import { Checkout } from './pages/Checkout';
-import { OrderConfirmation } from './pages/OrderConfirmation';
-import { Account } from './pages/Account';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { InfoPage } from './pages/InfoPage';
-import { WhatsAppWidget } from './components/WhatsAppWidget';
+
+const Layout = lazy(() => import('./components/Layout').then((module) => ({ default: module.Layout })));
+const Home = lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })));
+const ProductListing = lazy(() => import('./pages/ProductListing').then((module) => ({ default: module.ProductListing })));
+const ProductDetail = lazy(() => import('./pages/ProductDetail').then((module) => ({ default: module.ProductDetail })));
+const CartPage = lazy(() => import('./pages/CartPage').then((module) => ({ default: module.CartPage })));
+const Checkout = lazy(() => import('./pages/Checkout').then((module) => ({ default: module.Checkout })));
+const OrderConfirmation = lazy(() =>
+  import('./pages/OrderConfirmation').then((module) => ({ default: module.OrderConfirmation }))
+);
+const Account = lazy(() => import('./pages/Account').then((module) => ({ default: module.Account })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
+const InfoPage = lazy(() => import('./pages/InfoPage').then((module) => ({ default: module.InfoPage })));
+const WhatsAppWidget = lazy(() =>
+  import('./components/WhatsAppWidget').then((module) => ({ default: module.WhatsAppWidget }))
+);
+
+const AppShellFallback: React.FC = () => (
+  <div className="flex min-h-[40vh] items-center justify-center bg-white">
+    <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-mango-orange" aria-label="Loading page" />
+  </div>
+);
+
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+
+  React.useEffect(() => {
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+
+  return null;
+};
 
 function AppRoutes() {
-  const location = useLocation();
-
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <>
-        <Routes location={location}>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="products" element={<ProductListing />} />
-            <Route path="product/:id" element={<ProductDetail />} />
-            <Route path="cart" element={<CartPage />} />
-            <Route path="checkout" element={<Checkout />} />
-            <Route path="order-confirmation/:orderId" element={<OrderConfirmation />} />
-            <Route path="account" element={<Account />} />
-            <Route path="about" element={<InfoPage />} />
-            <Route path="contact" element={<InfoPage />} />
-            <Route path="shipping" element={<InfoPage />} />
-            <Route path="returns" element={<InfoPage />} />
-            <Route path="faq" element={<InfoPage />} />
-            <Route path="privacy" element={<InfoPage />} />
-          </Route>
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </>
-    </AnimatePresence>
+    <Suspense fallback={<AppShellFallback />}>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="products" element={<ProductListing />} />
+          <Route path="product/:id" element={<ProductDetail />} />
+          <Route path="cart" element={<CartPage />} />
+          <Route path="checkout" element={<Checkout />} />
+          <Route path="order-confirmation/:orderId" element={<OrderConfirmation />} />
+          <Route path="account" element={<Account />} />
+          <Route path="about" element={<InfoPage />} />
+          <Route path="contact" element={<InfoPage />} />
+          <Route path="shipping" element={<InfoPage />} />
+          <Route path="returns" element={<InfoPage />} />
+          <Route path="faq" element={<InfoPage />} />
+          <Route path="privacy" element={<InfoPage />} />
+        </Route>
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -49,8 +75,11 @@ function App() {
       <CartProvider>
         <Router>
           <>
+            <ScrollToTop />
             <AppRoutes />
-            <WhatsAppWidget />
+            <Suspense fallback={null}>
+              <WhatsAppWidget />
+            </Suspense>
           </>
         </Router>
       </CartProvider>

@@ -18,3 +18,74 @@
   @apply bg-white/80 backdrop-blur-md border border-white/20;
 }
 
+.page-fade-in {
+  animation: page-fade-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fade-up-enter {
+  animation: fade-up-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.card-hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-8px);
+}
+
+.mobile-menu-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.24s ease, opacity 0.24s ease;
+}
+
+.mobile-menu-panel[data-open='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.mobile-menu-panel-inner {
+  overflow: hidden;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-up-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-in,
+  .fade-up-enter {
+    animation: none;
+  }
+
+  .card-hover-lift,
+  .mobile-menu-panel {
+    transition: none;
+  }
+
+  .card-hover-lift:hover {
+    transform: none;
+  }
+}

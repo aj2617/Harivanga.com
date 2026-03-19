@@ -3,13 +3,12 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, Star, MapPin } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
-import { motion } from 'motion/react';
 
 interface ProductCardProps {
   product: Product;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+const ProductCardComponent: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -26,16 +25,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   };
 
   return (
-    <motion.div
-      whileHover={{ y: -8 }}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
-    >
+    <div className="group card-hover-lift rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-xl">
       <Link to={`/product/${product.id}`} className="block relative aspect-square overflow-hidden">
         <img
           src={product.image}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           referrerPolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
+          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
         />
         {!product.isAvailable && (
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
@@ -84,6 +83,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
+
+export const ProductCard = React.memo(ProductCardComponent);

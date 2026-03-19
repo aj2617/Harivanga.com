@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Minus, Plus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { motion } from 'motion/react';
+import { Seo } from '../components/Seo';
 
 export const CartPage: React.FC = () => {
   const { cart, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
@@ -29,6 +29,8 @@ export const CartPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      <Seo title="Shopping Cart" description="Review selected mangoes before checkout." path="/cart" robots="noindex,nofollow" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-black text-mango-dark mb-12">Shopping Cart ({totalItems})</h1>
 
@@ -36,15 +38,12 @@ export const CartPage: React.FC = () => {
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cart.map((item) => (
-              <motion.div
+              <div
                 key={`${item.productId}-${item.variant}`}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-6"
+                className="fade-up-enter bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-6"
               >
                 <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0">
-                  <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
+                  <img src={item.image} alt={item.productName} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 </div>
                 
                 <div className="flex-grow">
@@ -80,7 +79,7 @@ export const CartPage: React.FC = () => {
                     <span className="font-bold text-mango-dark">৳{item.price * item.quantity}</span>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
 

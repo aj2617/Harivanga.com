@@ -4,7 +4,11 @@ import { handleDatabaseError, mapOrderRow, mapProductRow, mapProductToRow, Opera
 import { useAuth } from '../context/AuthContext';
 import { Product, Order, OrderStatus } from '../types';
 import { MOCK_PRODUCTS } from '../data/mockData';
+import { getLocalDevProducts, isLocalDevAdminMode, isLocalDevHost, LOCAL_DEV_ADMIN_KEY, setLocalDevProducts } from '../lib/localDevProducts';
+import { getLocalDevOrders, LOCAL_DEV_ORDERS_UPDATED_EVENT, setLocalDevOrders } from '../lib/localDevOrders';
+import { notifyStorefrontProductsChanged } from '../lib/storefrontSync';
 import { BrandLogo } from '../components/BrandLogo';
+import { Seo } from '../components/Seo';
 import { 
   LayoutDashboard, Package, ShoppingBag, TrendingUp, 
   Plus, Edit2, Trash2, Clock, 
@@ -18,7 +22,6 @@ import { format } from 'date-fns';
 const ADMIN_EMAIL = 'ashadujjaman2617@gmail.com';
 const LOCAL_DEV_ADMIN_EMAIL = 'admin@local';
 const LOCAL_DEV_ADMIN_PASSWORD = 'admin1234';
-const LOCAL_DEV_ADMIN_KEY = 'harivanga_local_admin_access';
 type AdminTab = 'overview' | 'products' | 'orders' | 'settings';
 type SettingsSection = 'store' | 'delivery' | 'payments' | 'inventory' | 'orders' | 'users' | 'notifications' | 'availability';
 type DeliveryZoneSetting = { id: string; name: string; charge: number };
@@ -74,6 +77,21 @@ type AdminSettings = {
 
 const ADMIN_SETTINGS_KEY = 'harivanga_admin_settings';
 const LEGACY_ADMIN_SETTINGS_KEY = 'mangobd_admin_settings';
+const PRODUCT_ORIGINS = ['Rangpur', 'Rajshahi', 'Podagonj'] as const;
+const DEFAULT_PRODUCT_VARIANT = { weight: '1kg', price: 0 };
+const DEFAULT_PRODUCT_FORM: Partial<Product> = {
+  name: '',
+  description: '',
+  image: '',
+  images: [],
+  pricePerKg: 0,
+  stock: 999,
+  variety: 'Harivanga',
+  origin: 'Rangpur',
+  tasteProfile: '',
+  isAvailable: true,
+  variants: [{ ...DEFAULT_PRODUCT_VARIANT }]
+};
 const DEFAULT_SETTINGS: AdminSettings = {
   storeName: 'Harivanga.com',
   logoUrl: '',
@@ -142,12 +160,32 @@ const loadSettings = (): AdminSettings => {
   }
 };
 
+const createEmptyProductForm = (): Partial<Product> => ({
+  ...DEFAULT_PRODUCT_FORM,
+  images: [],
+  variants: [{ ...DEFAULT_PRODUCT_VARIANT }],
+});
+
+const buildProductForm = (product: Product): Partial<Product> => {
+  const images = product.images?.length ? product.images : product.image ? [product.image] : [];
+  const primaryImage = product.image || images[0] || '';
+  const normalizedImages = primaryImage
+    ? [primaryImage, ...images.filter((image) => image !== primaryImage)]
+    : images;
+
+  return {
+    ...product,
+    image: primaryImage,
+    images: normalizedImages,
+    stock: product.stock || 999,
+    variants: product.variants?.length ? product.variants : [{ ...DEFAULT_PRODUCT_VARIANT, price: product.pricePerKg }],
+  };
+};
+
 export const AdminDashboard: React.FC = () => {
   const { isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const isLocalDevHost =
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const localHost = isLocalDevHost();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -164,7 +202,7 @@ export const AdminDashboard: React.FC = () => {
   const [newZoneCharge, setNewZoneCharge] = useState('');
   const [settingsForm, setSettingsForm] = useState<AdminSettings>(loadSettings);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState(isLocalDevHost ? LOCAL_DEV_ADMIN_EMAIL : ADMIN_EMAIL);
+  const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : ADMIN_EMAIL);
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const [isAdminAuthenticating, setIsAdminAuthenticating] = useState(false);
@@ -173,24 +211,14 @@ export const AdminDashboard: React.FC = () => {
     return window.localStorage.getItem(LOCAL_DEV_ADMIN_KEY) === 'true';
   });
   const logoInputRef = useRef<HTMLInputElement | null>(null);
-  const hasAdminAccess = isAdmin || (isLocalDevHost && isLocalDevAuthenticated);
-  const isLocalDevBypass = isLocalDevHost && isLocalDevAuthenticated && !isAdmin;
+  const productImagesInputRef = useRef<HTMLInputElement | null>(null);
+  const hasAdminAccess = isAdmin || (localHost && isLocalDevAuthenticated);
+  const isLocalDevBypass = isLocalDevAdminMode() && !isAdmin;
   
   // Form states
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [productForm, setProductForm] = useState<Partial<Product>>({
-    name: '',
-    description: '',
-    image: '',
-    pricePerKg: 0,
-    stock: 0,
-    variety: 'Himsagar',
-    origin: 'Rajshahi',
-    tasteProfile: '',
-    isAvailable: true,
-    variants: [{ weight: '1kg', price: 0 }]
-  });
+  const [productForm, setProductForm] = useState<Partial<Product>>(createEmptyProductForm);
 
   useEffect(() => {
     if (!settingsSavedMessage) return;
@@ -201,8 +229,8 @@ export const AdminDashboard: React.FC = () => {
   const loadAdminData = async () => {
     if (isLocalDevBypass) {
       setErrorMessage(null);
-      setProducts(MOCK_PRODUCTS);
-      setOrders([]);
+      setProducts(getLocalDevProducts());
+      setOrders(getLocalDevOrders());
       setLoading(false);
       return;
     }
@@ -256,15 +284,26 @@ export const AdminDashboard: React.FC = () => {
       })
       .subscribe();
 
+    const refreshLocalOrders = () => {
+      if (!isLocalDevBypass) return;
+      setOrders(getLocalDevOrders());
+    };
+    window.addEventListener(LOCAL_DEV_ORDERS_UPDATED_EVENT, refreshLocalOrders);
+
     return () => {
       void supabase.removeChannel(productsChannel);
       void supabase.removeChannel(ordersChannel);
+      window.removeEventListener(LOCAL_DEV_ORDERS_UPDATED_EVENT, refreshLocalOrders);
     };
   }, [hasAdminAccess, isLocalDevBypass]);
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
     if (isLocalDevBypass) {
-      setOrders((current) => current.map((order) => (order.id === orderId ? { ...order, status } : order)));
+      setOrders((current) => {
+        const nextOrders = current.map((order) => (order.id === orderId ? { ...order, status } : order));
+        setLocalDevOrders(nextOrders);
+        return nextOrders;
+      });
       return;
     }
 
@@ -281,40 +320,57 @@ export const AdminDashboard: React.FC = () => {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    const sanitizedVariants = (productForm.variants ?? [])
+      .map((variant) => ({
+        weight: variant.weight.trim(),
+        price: Number(variant.price) || 0,
+      }))
+      .filter((variant) => variant.weight.length > 0);
+    const finalVariants = sanitizedVariants.length > 0 ? sanitizedVariants : [{ ...DEFAULT_PRODUCT_VARIANT, price: Number(productForm.pricePerKg) || 0 }];
+    const imageList = (productForm.images ?? []).filter(Boolean);
+    const primaryImage = productForm.image || imageList[0] || '';
+    const normalizedImages = primaryImage
+      ? [primaryImage, ...imageList.filter((image) => image !== primaryImage)]
+      : imageList;
+    const sanitizedProductForm: Partial<Product> = {
+      ...productForm,
+      image: primaryImage,
+      images: normalizedImages,
+      stock: productForm.stock ?? 999,
+      origin: productForm.origin || 'Rangpur',
+      pricePerKg: finalVariants[0]?.price ?? (Number(productForm.pricePerKg) || 0),
+      variants: finalVariants,
+    };
+
     if (isLocalDevBypass) {
       const nextProduct: Product = {
         id: editingProduct?.id ?? `local-product-${Date.now()}`,
-        name: productForm.name ?? '',
-        description: productForm.description ?? '',
-        image: productForm.image ?? '',
-        pricePerKg: productForm.pricePerKg ?? 0,
-        stock: productForm.stock ?? 0,
-        variety: productForm.variety ?? 'Himsagar',
-        origin: productForm.origin ?? 'Rajshahi',
-        tasteProfile: productForm.tasteProfile ?? '',
-        isAvailable: productForm.isAvailable ?? true,
-        variants: productForm.variants ?? [{ weight: '1kg', price: productForm.pricePerKg ?? 0 }],
+        name: sanitizedProductForm.name ?? '',
+        description: sanitizedProductForm.description ?? '',
+        image: sanitizedProductForm.image ?? '',
+        images: sanitizedProductForm.images,
+        pricePerKg: sanitizedProductForm.pricePerKg ?? 0,
+        stock: sanitizedProductForm.stock ?? 999,
+        variety: sanitizedProductForm.variety ?? 'Harivanga',
+        origin: sanitizedProductForm.origin ?? 'Rangpur',
+        tasteProfile: sanitizedProductForm.tasteProfile ?? '',
+        isAvailable: sanitizedProductForm.isAvailable ?? true,
+        variants: sanitizedProductForm.variants ?? [{ ...DEFAULT_PRODUCT_VARIANT }],
       };
 
       setProducts((current) =>
-        editingProduct
-          ? current.map((product) => (product.id === editingProduct.id ? nextProduct : product))
-          : [...current, nextProduct]
+        {
+          const nextProducts = editingProduct
+            ? current.map((product) => (product.id === editingProduct.id ? nextProduct : product))
+            : [...current, nextProduct];
+          setLocalDevProducts(nextProducts);
+          notifyStorefrontProductsChanged();
+          return nextProducts;
+        }
       );
       setIsProductModalOpen(false);
       setEditingProduct(null);
-      setProductForm({
-        name: '',
-        description: '',
-        image: '',
-        pricePerKg: 0,
-        stock: 0,
-        variety: 'Himsagar',
-        origin: 'Rajshahi',
-        tasteProfile: '',
-        isAvailable: true,
-        variants: [{ weight: '1kg', price: 0 }]
-      });
+      setProductForm(createEmptyProductForm());
       return;
     }
 
@@ -322,7 +378,7 @@ export const AdminDashboard: React.FC = () => {
       if (editingProduct) {
         const { error } = await supabase
           .from('products')
-          .update(mapProductToRow(productForm))
+          .update(mapProductToRow(sanitizedProductForm))
           .eq('id', editingProduct.id);
         if (error) {
           throw error;
@@ -330,26 +386,14 @@ export const AdminDashboard: React.FC = () => {
       } else {
         const { error } = await supabase
           .from('products')
-          .insert(mapProductToRow(productForm));
+          .insert(mapProductToRow(sanitizedProductForm));
         if (error) {
           throw error;
         }
       }
       await loadAdminData();
-      setIsProductModalOpen(false);
-      setEditingProduct(null);
-      setProductForm({
-        name: '',
-        description: '',
-        image: '',
-        pricePerKg: 0,
-        stock: 0,
-        variety: 'Himsagar',
-        origin: 'Rajshahi',
-        tasteProfile: '',
-        isAvailable: true,
-        variants: [{ weight: '1kg', price: 0 }]
-      });
+      notifyStorefrontProductsChanged();
+      resetProductModal();
     } catch (error) {
       handleDatabaseError(error, OperationType.WRITE, 'products');
     }
@@ -358,7 +402,12 @@ export const AdminDashboard: React.FC = () => {
   const handleDeleteProduct = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       if (isLocalDevBypass) {
-        setProducts((current) => current.filter((product) => product.id !== id));
+        setProducts((current) => {
+          const nextProducts = current.filter((product) => product.id !== id);
+          setLocalDevProducts(nextProducts);
+          notifyStorefrontProductsChanged();
+          return nextProducts;
+        });
         return;
       }
 
@@ -368,6 +417,7 @@ export const AdminDashboard: React.FC = () => {
           throw error;
         }
         await loadAdminData();
+        notifyStorefrontProductsChanged();
       } catch (error) {
         handleDatabaseError(error, OperationType.DELETE, 'products');
       }
@@ -435,7 +485,12 @@ export const AdminDashboard: React.FC = () => {
 
     try {
       if (isLocalDevBypass) {
-        setProducts((current) => [...current, ...missingProducts]);
+        setProducts((current) => {
+          const nextProducts = [...current, ...missingProducts];
+          setLocalDevProducts(nextProducts);
+          notifyStorefrontProductsChanged();
+          return nextProducts;
+        });
         window.alert(`Added ${missingProducts.length} demo product${missingProducts.length > 1 ? 's' : ''}.`);
         return;
       }
@@ -448,6 +503,7 @@ export const AdminDashboard: React.FC = () => {
         }
       }
       await loadAdminData();
+      notifyStorefrontProductsChanged();
       window.alert(`Added ${missingProducts.length} demo product${missingProducts.length > 1 ? 's' : ''}.`);
     } catch (error) {
       handleDatabaseError(error, OperationType.WRITE, 'products');
@@ -466,13 +522,110 @@ export const AdminDashboard: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleProductImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []) as File[];
+    if (files.length === 0) return;
+
+    const images = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+
+    setProductForm((current) => {
+      const currentImages = current.images ?? (current.image ? [current.image] : []);
+      const nextImages = [...currentImages, ...images].filter(Boolean);
+      return {
+        ...current,
+        image: current.image || nextImages[0] || '',
+        images: nextImages,
+      };
+    });
+
+    event.target.value = '';
+  };
+
+  const handlePrimaryImageSelect = (image: string) => {
+    setProductForm((current) => ({
+      ...current,
+      image,
+      images: [image, ...(current.images ?? []).filter((item) => item !== image)],
+    }));
+  };
+
+  const handleRemoveProductImage = (image: string) => {
+    setProductForm((current) => {
+      const nextImages = (current.images ?? []).filter((item) => item !== image);
+      const nextPrimary = current.image === image ? nextImages[0] ?? '' : current.image ?? nextImages[0] ?? '';
+      return {
+        ...current,
+        image: nextPrimary,
+        images: nextImages,
+      };
+    });
+  };
+
+  const handleVariantChange = (index: number, key: keyof Product['variants'][number], value: string) => {
+    setProductForm((current) => {
+      const nextVariants = (current.variants ?? [{ ...DEFAULT_PRODUCT_VARIANT }]).map((variant, variantIndex) =>
+        variantIndex === index
+          ? {
+              ...variant,
+              [key]: key === 'price' ? Number(value) || 0 : value,
+            }
+          : variant
+      );
+
+      return {
+        ...current,
+        variants: nextVariants,
+        pricePerKg: nextVariants[0]?.price ?? current.pricePerKg ?? 0,
+      };
+    });
+  };
+
+  const handleAddVariant = () => {
+    setProductForm((current) => ({
+      ...current,
+      variants: [...(current.variants ?? [{ ...DEFAULT_PRODUCT_VARIANT }]), { weight: '', price: 0 }],
+    }));
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    setProductForm((current) => {
+      const currentVariants = current.variants ?? [{ ...DEFAULT_PRODUCT_VARIANT }];
+      const nextVariants = currentVariants.length === 1
+        ? [{ ...DEFAULT_PRODUCT_VARIANT }]
+        : currentVariants.filter((_, variantIndex) => variantIndex !== index);
+
+      return {
+        ...current,
+        variants: nextVariants,
+        pricePerKg: nextVariants[0]?.price ?? 0,
+      };
+    });
+  };
+
+  const resetProductModal = () => {
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
+    setProductForm(createEmptyProductForm());
+  };
+
   const handleAdminLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setAdminLoginError(null);
 
     const normalizedEmail = adminEmail.trim().toLowerCase();
-    if (isLocalDevHost && normalizedEmail === LOCAL_DEV_ADMIN_EMAIL && adminPassword === LOCAL_DEV_ADMIN_PASSWORD) {
+    if (localHost && normalizedEmail === LOCAL_DEV_ADMIN_EMAIL && adminPassword === LOCAL_DEV_ADMIN_PASSWORD) {
       window.localStorage.setItem(LOCAL_DEV_ADMIN_KEY, 'true');
+      setLocalDevProducts(getLocalDevProducts());
       setIsLocalDevAuthenticated(true);
       setAdminPassword('');
       return;
@@ -509,6 +662,7 @@ export const AdminDashboard: React.FC = () => {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
+        <Seo title="Admin Portal" description="Secure admin access." path="/admin" robots="noindex,nofollow" />
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mango-orange"></div>
       </div>
     );
@@ -517,6 +671,7 @@ export const AdminDashboard: React.FC = () => {
   if (errorMessage) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <Seo title="Admin Portal" description="Secure admin access." path="/admin" robots="noindex,nofollow" />
         <h2 className="text-2xl font-bold mb-4">Admin Data Error</h2>
         <p className="text-gray-500 mb-8 text-center max-w-md">{errorMessage}</p>
         <button onClick={() => window.location.reload()} className="text-mango-orange font-bold">Reload Page</button>
@@ -527,6 +682,7 @@ export const AdminDashboard: React.FC = () => {
   if (!hasAdminAccess) {
     return (
       <div className="min-h-screen bg-[#0c1326] px-4 py-4 sm:px-6 lg:px-8">
+        <Seo title="Admin Portal" description="Secure admin access." path="/admin" robots="noindex,nofollow" />
         <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-md items-center justify-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -577,7 +733,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 )}
 
-                {isLocalDevHost && (
+                {localHost && (
                   <div className="rounded-[16px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-xs font-medium text-[#b8c7ea]">
                     Local test login: <span className="font-bold text-white">{LOCAL_DEV_ADMIN_EMAIL}</span> / <span className="font-bold text-white">{LOCAL_DEV_ADMIN_PASSWORD}</span>
                   </div>
@@ -710,6 +866,8 @@ export const AdminDashboard: React.FC = () => {
       transition={panelTransition}
       className="min-h-screen bg-gray-50 flex flex-col lg:flex-row"
     >
+      <Seo title="Admin Dashboard" description="Secure admin management dashboard." path="/admin" robots="noindex,nofollow" />
+
       {/* Sidebar */}
       <aside className="w-64 bg-mango-dark text-white hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="p-8">
@@ -955,18 +1113,7 @@ export const AdminDashboard: React.FC = () => {
               <button 
                 onClick={() => {
                   setEditingProduct(null);
-                  setProductForm({
-                    name: '',
-                    description: '',
-                    image: '',
-                    pricePerKg: 0,
-                    stock: 0,
-                    variety: 'Himsagar',
-                    origin: 'Rajshahi',
-                    tasteProfile: '',
-                    isAvailable: true,
-                    variants: [{ weight: '1kg', price: 0 }]
-                  });
+                  setProductForm(createEmptyProductForm());
                   setIsProductModalOpen(true);
                 }}
                 className="w-full sm:w-auto bg-mango-orange text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-mango-orange/20"
@@ -1058,7 +1205,7 @@ export const AdminDashboard: React.FC = () => {
                           <button 
                             onClick={() => {
                               setEditingProduct(product);
-                              setProductForm(product);
+                              setProductForm(buildProductForm(product));
                               setIsProductModalOpen(true);
                             }}
                             className="p-2 text-gray-400 hover:text-mango-orange transition-colors"
@@ -1116,7 +1263,7 @@ export const AdminDashboard: React.FC = () => {
                         <button
                           onClick={() => {
                             setEditingProduct(product);
-                            setProductForm(product);
+                            setProductForm(buildProductForm(product));
                             setIsProductModalOpen(true);
                           }}
                           className="flex-1 rounded-2xl bg-mango-orange/10 px-4 py-3 text-sm font-bold text-mango-orange"
@@ -1751,11 +1898,11 @@ export const AdminDashboard: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh]"
+              className="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh]"
             >
               <div className="p-5 sm:p-8 border-b border-gray-100 flex justify-between items-center gap-4">
                 <h2 className="text-xl sm:text-2xl font-black">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-                <button onClick={() => setIsProductModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <button onClick={resetProductModal} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <X size={24} />
                 </button>
               </div>
@@ -1764,21 +1911,22 @@ export const AdminDashboard: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Product Name</label>
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       value={productForm.name}
                       onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20" 
+                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Variety</label>
-                    <select 
+                    <select
                       value={productForm.variety}
                       onChange={(e) => setProductForm({ ...productForm, variety: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
                     >
+                      <option>Harivanga</option>
                       <option>Himsagar</option>
                       <option>Langra</option>
                       <option>Alphonso</option>
@@ -1790,7 +1938,7 @@ export const AdminDashboard: React.FC = () => {
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Description</label>
-                  <textarea 
+                  <textarea
                     required
                     rows={3}
                     value={productForm.description}
@@ -1799,81 +1947,156 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Price (৳/kg)</label>
-                    <input 
-                      required
-                      type="number" 
-                      value={productForm.pricePerKg}
-                      onChange={(e) => setProductForm({ ...productForm, pricePerKg: Number(e.target.value) })}
-                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20" 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Stock (kg)</label>
-                    <input 
-                      required
-                      type="number" 
-                      value={productForm.stock}
-                      onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })}
-                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20" 
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Taste Profile</label>
+                  <input
+                    required
+                    type="text"
+                    value={productForm.tasteProfile}
+                    onChange={(e) => setProductForm({ ...productForm, tasteProfile: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                    placeholder="Sweet, aromatic, creamy..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Origin</label>
-                    <input 
-                      required
-                      type="text" 
+                    <select
                       value={productForm.origin}
                       onChange={(e) => setProductForm({ ...productForm, origin: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20" 
+                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                    >
+                      {PRODUCT_ORIGINS.map((origin) => (
+                        <option key={origin} value={origin}>{origin}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Season Status</label>
+                    <select
+                      value={productForm.isAvailable ? 'in-season' : 'out-of-season'}
+                      onChange={(e) => setProductForm({ ...productForm, isAvailable: e.target.value === 'in-season' })}
+                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                    >
+                      <option value="in-season">In Season</option>
+                      <option value="out-of-season">Out of Season</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Price Options</label>
+                    <button
+                      type="button"
+                      onClick={handleAddVariant}
+                      className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-mango-dark"
+                    >
+                      <Plus size={14} />
+                      Add Price
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {(productForm.variants ?? []).map((variant, index) => (
+                      <div key={`${variant.weight}-${index}`} className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 md:grid-cols-[minmax(0,1fr)_180px_52px]">
+                        <input
+                          required
+                          type="text"
+                          value={variant.weight}
+                          onChange={(e) => handleVariantChange(index, 'weight', e.target.value)}
+                          placeholder="Weight label, e.g. 1kg or 5kg Box"
+                          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                        />
+                        <input
+                          required
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={variant.price === 0 ? '' : String(variant.price)}
+                          onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
+                          placeholder="Price"
+                          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVariant(index)}
+                          className="inline-flex items-center justify-center rounded-2xl border border-red-100 bg-white text-red-500"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <p className="text-xs text-gray-500">The first option becomes the starting price shown on Home and Shop.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Product Images</label>
+                    <button
+                      type="button"
+                      onClick={() => productImagesInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-mango-dark"
+                    >
+                      <ImageIcon size={14} />
+                      Upload Images
+                    </button>
+                    <input
+                      ref={productImagesInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleProductImageUpload}
+                      className="hidden"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Image URL</label>
-                  <div className="flex gap-4">
-                    <div className="flex-grow relative">
-                      <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input 
-                        required
-                        type="url" 
-                        value={productForm.image}
-                        onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                        className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-mango-orange/20" 
-                        placeholder="https://..."
-                      />
+                  {(productForm.images ?? []).length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {(productForm.images ?? []).map((image, index) => {
+                        const isPrimary = productForm.image === image;
+                        return (
+                          <div key={`${image}-${index}`} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                            <div className="aspect-square overflow-hidden bg-gray-100">
+                              <img src={image} alt={`Product upload ${index + 1}`} className="h-full w-full object-cover" />
+                            </div>
+                            <div className="flex items-center gap-2 p-3">
+                              <button
+                                type="button"
+                                onClick={() => handlePrimaryImageSelect(image)}
+                                className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold ${isPrimary ? 'bg-mango-orange text-white' : 'bg-gray-100 text-mango-dark'}`}
+                              >
+                                {isPrimary ? 'Primary' : 'Set Primary'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveProductImage(image)}
+                                className="rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-500"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {productForm.image && (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-200">
-                        <img src={productForm.image} alt="Preview" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
-                  <input 
-                    type="checkbox" 
-                    id="isAvailable"
-                    checked={productForm.isAvailable}
-                    onChange={(e) => setProductForm({ ...productForm, isAvailable: e.target.checked })}
-                    className="w-5 h-5 rounded text-mango-orange focus:ring-mango-orange"
-                  />
-                  <label htmlFor="isAvailable" className="text-sm font-bold text-mango-dark">Product is currently in season</label>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+                      Upload one or more images from your device. Choose one as the primary image for Home and Shop.
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-6 border-t border-gray-100 flex gap-4">
-                  <button 
+                  <button
                     type="button"
-                    onClick={() => setIsProductModalOpen(false)}
+                    onClick={resetProductModal}
                     className="flex-grow py-4 rounded-2xl font-bold text-gray-400 hover:bg-gray-50 transition-all"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     type="submit"
                     className="flex-grow bg-mango-orange text-white py-4 rounded-2xl font-bold shadow-xl shadow-mango-orange/20 hover:bg-mango-orange/90 transition-all flex items-center justify-center gap-2"
                   >

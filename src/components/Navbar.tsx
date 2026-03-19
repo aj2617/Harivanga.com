@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, LogOut } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../supabase';
-import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from './BrandLogo';
 
 export const Navbar: React.FC = () => {
@@ -18,6 +17,18 @@ export const Navbar: React.FC = () => {
     navigate('/');
   };
 
+  const desktopNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `relative rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+      isActive
+        ? 'bg-mango-orange text-white shadow-lg shadow-mango-orange/20'
+        : 'text-mango-dark hover:bg-mango-yellow/20 hover:text-mango-orange'
+    }`;
+
+  const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `block rounded-xl px-4 py-3 text-base font-semibold transition-colors ${
+      isActive ? 'bg-mango-orange text-white' : 'hover:bg-mango-yellow/10 text-mango-dark'
+    }`;
+
   return (
     <nav className="sticky top-0 z-50 glass shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,10 +38,10 @@ export const Navbar: React.FC = () => {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-sm font-medium hover:text-mango-orange transition-colors">Home</Link>
-            <Link to="/products" className="text-sm font-medium hover:text-mango-orange transition-colors">Shop Mangoes</Link>
-            <Link to="/about" className="text-sm font-medium hover:text-mango-orange transition-colors">Our Story</Link>
+          <div className="hidden md:flex items-center gap-3 rounded-full border border-white/60 bg-white/70 p-2 shadow-sm backdrop-blur-md">
+            <NavLink to="/" end className={desktopNavLinkClass}>Home</NavLink>
+            <NavLink to="/products" className={desktopNavLinkClass}>Shop Mangoes</NavLink>
+            <NavLink to="/about" className={desktopNavLinkClass}>Our Story</NavLink>
           </div>
 
           <div className="hidden md:flex items-center gap-4">
@@ -70,26 +81,23 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-t border-gray-100 overflow-hidden"
-          >
-            <div className="px-4 pt-2 pb-6 space-y-1">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Home</Link>
-              <Link to="/products" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Shop Mangoes</Link>
-              <Link to="/about" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Our Story</Link>
-              <Link to="/account" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Track Order</Link>
-              {user && (
-                <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-base font-medium text-red-500 hover:bg-red-50 rounded-md">Logout</button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        className="mobile-menu-panel md:hidden border-t border-gray-100 bg-white"
+        data-open={isMenuOpen}
+        aria-hidden={!isMenuOpen}
+      >
+        <div className="mobile-menu-panel-inner">
+          <div className="px-4 pt-2 pb-6 space-y-1">
+            <NavLink to="/" end onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Home</NavLink>
+            <NavLink to="/products" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Shop Mangoes</NavLink>
+            <NavLink to="/about" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Our Story</NavLink>
+            <NavLink to="/account" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Track Order</NavLink>
+            {user && (
+              <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-base font-medium text-red-500 hover:bg-red-50 rounded-md">Logout</button>
+            )}
+          </div>
+        </div>
+      </div>
     </nav>
   );
 };

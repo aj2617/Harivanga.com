@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { auth, mapUserProfileRow, mapUserProfileToRow, supabase } from '../supabase';
 import { UserProfile } from '../types';
@@ -129,9 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const isAdmin = profile?.role === 'admin' || user?.email === ADMIN_EMAIL;
+  const value = useMemo(() => ({ user, profile, loading, isAdmin }), [user, profile, loading, isAdmin]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

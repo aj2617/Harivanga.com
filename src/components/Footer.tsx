@@ -13,7 +13,7 @@ export const Footer: React.FC = () => {
               <BrandLogo size="sm" dark={false} />
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
-              Bringing the finest, farm-fresh mangoes from Rajshahi and Chapainawabganj directly to your doorstep. Pesticide-free and naturally ripened.
+              Straight from Podaganj&apos;s legendary red-soil farms, where the finest Harivanga grows. Tree-ripened, chemical-free, and delivered fresh to your doorstep.
             </p>
             <div className="flex gap-4">
               <a href="https://www.facebook.com/Jimbabu123" target="_blank" rel="noreferrer" className="p-2 bg-white/5 rounded-full hover:bg-mango-orange transition-colors"><Facebook size={18} /></a>
@@ -47,7 +47,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-4 text-gray-400 text-sm">
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-mango-orange shrink-0" />
-                <span>House 12, Road 5, Dhanmondi, Dhaka, Bangladesh</span>
+                <span>Podagonj, Mithapukur, Rangpur, Bangladesh</span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone size={18} className="text-mango-orange shrink-0" />

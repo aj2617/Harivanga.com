@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { mapOrderRow, supabase } from '../supabase';
+import { Seo } from '../components/Seo';
+import { getLocalDevOrderById } from '../lib/localDevOrders';
 import { Order } from '../types';
 import { CheckCircle, Package, Truck, MessageCircle, ArrowRight, Calendar, MapPin } from 'lucide-react';
-import { motion } from 'motion/react';
 
 export const OrderConfirmation: React.FC = () => {
   const { orderId } = useParams();
@@ -12,7 +13,17 @@ export const OrderConfirmation: React.FC = () => {
 
   useEffect(() => {
     const fetchOrder = async () => {
-      if (!orderId) return;
+      if (!orderId) {
+        setLoading(false);
+        return;
+      }
+
+      const localOrder = getLocalDevOrderById(orderId);
+      if (localOrder) {
+        setOrder(localOrder);
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('orders')
@@ -33,6 +44,7 @@ export const OrderConfirmation: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
+        <Seo title="Order Confirmation" description="View your order confirmation." path={`/order-confirmation/${orderId ?? ''}`} robots="noindex,nofollow" />
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mango-orange"></div>
       </div>
     );
@@ -41,6 +53,7 @@ export const OrderConfirmation: React.FC = () => {
   if (!order) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <Seo title="Order Confirmation" description="View your order confirmation." path={`/order-confirmation/${orderId ?? ''}`} robots="noindex,nofollow" />
         <h2 className="text-2xl font-bold mb-4">Order not found</h2>
         <Link to="/" className="text-mango-orange font-bold">Back to Home</Link>
       </div>
@@ -49,12 +62,9 @@ export const OrderConfirmation: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      <Seo title="Order Confirmation" description="View your order confirmation." path={`/order-confirmation/${orderId ?? ''}`} robots="noindex,nofollow" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-3xl shadow-xl overflow-hidden"
-        >
+        <div className="fade-up-enter bg-white rounded-3xl shadow-xl overflow-hidden">
           <div className="bg-mango-orange p-12 text-center text-white relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
               <Package size={200} className="absolute -top-10 -left-10 rotate-12" />
@@ -154,7 +164,7 @@ export const OrderConfirmation: React.FC = () => {
               </Link>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

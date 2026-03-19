@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnnouncementBar } from './AnnouncementBar';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
-import { AnimatePresence, motion } from 'motion/react';
 
 export const Layout: React.FC = () => {
   const location = useLocation();
@@ -13,18 +12,9 @@ export const Layout: React.FC = () => {
       <AnnouncementBar />
       <Navbar />
       <main className="flex-grow overflow-x-clip">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-            className="min-h-full"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        <div key={location.pathname} className="min-h-full page-fade-in">
+          <Outlet />
+        </div>
       </main>
       <Footer />
     </div>

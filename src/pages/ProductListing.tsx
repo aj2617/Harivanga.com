@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { Search, Filter, SlidersHorizontal } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
-import { MOCK_PRODUCTS } from '../data/mockData';
-import { motion } from 'motion/react';
+import { Seo } from '../components/Seo';
+import { useProducts } from '../hooks/useProducts';
 
 export const ProductListing: React.FC = () => {
+  const { products, loading } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVariety, setSelectedVariety] = useState('All');
 
-  const varieties = ['All', ...Array.from(new Set(MOCK_PRODUCTS.map(p => p.variety)))];
+  const varieties = ['All', ...Array.from(new Set(products.map(p => p.variety)))];
 
-  const filteredProducts = MOCK_PRODUCTS.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          product.variety.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesVariety = selectedVariety === 'All' || product.variety === selectedVariety;
@@ -19,11 +20,26 @@ export const ProductListing: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      <Seo
+        title="Shop Harivanga and Premium Mangoes"
+        description="Browse Harivanga and premium mango varieties from Podaganj, Mithapukur, Rangpur. Compare varieties, prices, and order fresh seasonal mangoes online."
+        path="/products"
+        keywords={['shop mangoes', 'Harivanga shop', 'premium mango Bangladesh', 'Rangpur Harivanga', 'buy mango online']}
+        schema={{
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          name: 'Shop Harivanga and Premium Mangoes',
+          url: 'https://harivanga.com/products',
+          description:
+            'Browse Harivanga and premium mango varieties from Podaganj, Mithapukur, Rangpur.',
+        }}
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-black text-mango-dark mb-2">Shop Fresh Mangoes</h1>
-            <p className="text-gray-500">Discover the finest varieties from Rajshahi's orchards.</p>
+            <p className="text-gray-500">Discover authentic Harivanga and premium mangoes from Podagonj, Mithapukur, Rangpur.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
@@ -52,17 +68,24 @@ export const ProductListing: React.FC = () => {
           </div>
         </div>
 
-        {filteredProducts.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+              <Search size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Loading products...</h3>
+            <p className="text-gray-500">Fetching the latest product list.</p>
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {filteredProducts.map((product, index) => (
-              <motion.div
+              <div
                 key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                className="fade-up-enter"
+                style={{ animationDelay: `${Math.min(index, 7) * 80}ms` }}
               >
                 <ProductCard product={product} />
-              </motion.div>
+              </div>
             ))}
           </div>
         ) : (
