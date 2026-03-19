@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { mapOrderRow, supabase } from '../supabase';
 import { Order } from '../types';
 import { CheckCircle, Package, Truck, MessageCircle, ArrowRight, Calendar, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -15,10 +14,16 @@ export const OrderConfirmation: React.FC = () => {
     const fetchOrder = async () => {
       if (!orderId) return;
 
-      const docRef = doc(db, 'orders', orderId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setOrder({ id: docSnap.id, ...docSnap.data() } as Order);
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to load order', error);
+      } else if (data) {
+        setOrder(mapOrderRow(data));
       }
       setLoading(false);
     };
@@ -52,10 +57,10 @@ export const OrderConfirmation: React.FC = () => {
         >
           <div className="bg-mango-orange p-12 text-center text-white relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-               <Package size={200} className="absolute -top-10 -left-10 rotate-12" />
-               <Truck size={150} className="absolute -bottom-10 -right-10 -rotate-12" />
+              <Package size={200} className="absolute -top-10 -left-10 rotate-12" />
+              <Truck size={150} className="absolute -bottom-10 -right-10 -rotate-12" />
             </div>
-            
+
             <div className="relative z-10">
               <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle size={40} className="text-white" />
@@ -122,7 +127,7 @@ export const OrderConfirmation: React.FC = () => {
                     <p className="text-sm text-gray-500">Our support team is available 24/7 on WhatsApp.</p>
                   </div>
                 </div>
-                <a 
+                <a
                   href={`https://wa.me/8801307367441?text=I have a question about my order #${order.id}`}
                   target="_blank"
                   rel="noreferrer"
@@ -134,14 +139,14 @@ export const OrderConfirmation: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link 
-                to="/account" 
+              <Link
+                to="/account"
                 className="flex-grow bg-mango-dark text-white py-4 rounded-2xl font-bold text-center hover:bg-mango-dark/90 transition-all"
               >
-                Track Order Status
+                Track By Phone Number
               </Link>
-              <Link 
-                to="/" 
+              <Link
+                to="/"
                 className="flex-grow bg-gray-100 text-mango-dark py-4 rounded-2xl font-bold text-center hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
               >
                 Continue Shopping

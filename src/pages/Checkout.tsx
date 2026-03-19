@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { handleDatabaseError, mapOrderToRow, OperationType, supabase } from '../supabase';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle2, CreditCard, Truck, MapPin, Phone, User as UserIcon, Calendar, Building2, LocateFixed } from 'lucide-react';
@@ -19,6 +18,8 @@ const DISTRICTS_BY_DIVISION: Record<string, string[]> = {
 };
 
 type DeliveryMethod = 'Home Delivery' | 'Courier Pickup';
+
+const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, '');
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart } = useCart();
@@ -58,9 +59,8 @@ export const Checkout: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      alert('Please login to place an order');
-      navigate('/account');
+    if (cart.length === 0) {
+      navigate('/products');
       return;
     }
 
@@ -69,6 +69,7 @@ export const Checkout: React.FC = () => {
       const orderBase = {
         customerName: formData.name,
         customerPhone: formData.phone,
+        customerPhoneNormalized: normalizePhoneNumber(formData.phone),
         deliveryAddress: formData.address,
         deliveryArea: deliveryAreaLabel,
         deliveryDivision: formData.division,
@@ -90,14 +91,25 @@ export const Checkout: React.FC = () => {
         createdAt: new Date().toISOString(),
       };
 
-      const docRef = await addDoc(collection(db, 'orders'), {
-        userId: user.uid,
-        ...orderBase,
-      });
+      const { data, error } = await supabase
+        .from('orders')
+        .insert(
+          mapOrderToRow({
+            userId: user?.id,
+            ...orderBase,
+          })
+        )
+        .select('id')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       clearCart();
-      navigate(`/order-confirmation/${docRef.id}`);
+      navigate(`/order-confirmation/${data.id}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'orders');
+      handleDatabaseError(error, OperationType.CREATE, 'orders');
     } finally {
       setIsSubmitting(false);
     }

@@ -1,152 +1,112 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { auth, db, getAuthErrorMessage, signInWithGoogle } from '../firebase';
-import { useAuth } from '../context/AuthContext';
+import { mapOrderRow, supabase } from '../supabase';
 import { Order } from '../types';
-import { User, Package, MapPin, LogOut, ChevronRight, Clock, CheckCircle2, Truck } from 'lucide-react';
+import { Search, Package, Clock, CheckCircle2, Truck, Phone } from 'lucide-react';
 import { motion } from 'motion/react';
 import { format } from 'date-fns';
 
-export const Account: React.FC = () => {
-  const { user, profile, loading } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const activeProfile = profile;
-  const activeName = user?.displayName || profile?.name || 'Harivanga Customer';
-  const activeEmailOrPhone = user?.email || user?.phoneNumber || profile?.phone;
+const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, '');
 
-  useEffect(() => {
-    if (!user) {
-      setOrders([]);
-      setOrdersLoading(false);
+export const Account: React.FC = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [phone, setPhone] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const navigate = useNavigate();
+
+  const handleTrackOrders = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      setSearchError('Enter the phone number used for the order.');
       return;
     }
 
-    const q = query(
-      collection(db, 'orders'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
+    setIsSearching(true);
+    setSearchError(null);
+    setHasSearched(true);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-      setOrders(ordersData);
-      setOrdersLoading(false);
-    }, (error) => {
-      console.error('Failed to load account orders', error);
-      setOrders([]);
-      setOrdersLoading(false);
-    });
-
-    return unsubscribe;
-  }, [user]);
-
-  const handleGoogleLogin = async () => {
     try {
-      setLoginError(null);
-      await signInWithGoogle();
+      const snapshots = await Promise.all([
+        supabase.from('orders').select('*').eq('customer_phone_normalized', normalizedPhone),
+        supabase.from('orders').select('*').eq('customer_phone', phone.trim()),
+      ]);
+      const orderMap = new Map<string, Order>();
+
+      snapshots.forEach(({ data, error }) => {
+        if (error) {
+          throw error;
+        }
+
+        (data ?? []).forEach((row) => {
+          const order = mapOrderRow(row);
+          orderMap.set(order.id, order);
+        });
+      });
+
+      const matchedOrders = Array.from(orderMap.values()).sort(
+        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      );
+
+      setOrders(matchedOrders);
     } catch (error) {
-      console.error('Login error:', error);
-      setLoginError(getAuthErrorMessage(error));
+      console.error('Failed to track orders by phone number', error);
+      setOrders([]);
+      setSearchError('Could not check order status right now. Please try again.');
+    } finally {
+      setIsSearching(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mango-orange"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+  return (
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white p-10 rounded-3xl shadow-xl text-center"
+          className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm"
         >
-          <div className="w-20 h-20 bg-mango-orange/10 text-mango-orange rounded-full flex items-center justify-center mx-auto mb-8">
-            <User size={40} />
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-black text-mango-dark">Track Your Order</h1>
+            <p className="mt-3 text-gray-500">
+              No login needed. Enter the phone number used at checkout to view your latest order updates.
+            </p>
           </div>
-          <h2 className="text-3xl font-black text-mango-dark mb-4">Welcome Back</h2>
-          <p className="text-gray-500 mb-10">Login to track your orders, save addresses, and enjoy a faster checkout experience.</p>
-          {loginError && (
-            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-              {loginError}
+
+          <form onSubmit={handleTrackOrders} className="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
+            <label className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                <Phone size={14} /> Phone Number
+              </span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="01XXXXXXXXX"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="self-end rounded-2xl bg-mango-orange px-6 py-3 font-bold text-white transition-all hover:bg-mango-orange/90 disabled:bg-gray-200"
+            >
+              {isSearching ? 'Checking...' : 'Check Status'}
+            </button>
+          </form>
+
+          {searchError && (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {searchError}
             </div>
           )}
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full bg-white border-2 border-gray-100 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all mb-4"
-          >
-            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-            Continue with Google
-          </button>
-          
-          <p className="text-[10px] text-gray-400 mt-6 uppercase tracking-widest font-bold">
-            Secure Login Powered by Firebase
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 text-center">
-              <div className="w-24 h-24 bg-mango-orange rounded-full flex items-center justify-center mx-auto mb-6 text-white font-black text-3xl shadow-lg shadow-mango-orange/20">
-                {activeName?.[0] || activeEmailOrPhone?.[0] || 'U'}
-              </div>
-              <h3 className="text-xl font-bold text-mango-dark mb-1">{activeName}</h3>
-              <p className="text-sm text-gray-400 mb-6">{activeEmailOrPhone}</p>
-              <button 
-                onClick={() => auth.signOut()}
-                className="w-full py-3 rounded-xl border border-gray-100 text-sm font-bold text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-2"
-              >
-                <LogOut size={16} /> Sign Out
-              </button>
-            </div>
+          <div className="mt-10">
+            <h2 className="text-2xl font-black text-mango-dark mb-6">Order Status</h2>
 
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 space-y-1">
-              <button className="w-full flex items-center justify-between p-4 rounded-2xl bg-mango-orange/5 text-mango-orange font-bold transition-all">
-                <div className="flex items-center gap-3">
-                  <Package size={20} /> My Orders
-                </div>
-                <ChevronRight size={16} />
-              </button>
-              <button className="w-full flex items-center justify-between p-4 rounded-2xl text-gray-500 hover:bg-gray-50 font-bold transition-all">
-                <div className="flex items-center gap-3">
-                  <MapPin size={20} /> Saved Addresses
-                </div>
-                <ChevronRight size={16} />
-              </button>
-              <button className="w-full flex items-center justify-between p-4 rounded-2xl text-gray-500 hover:bg-gray-50 font-bold transition-all">
-                <div className="flex items-center gap-3">
-                  <User size={20} /> Profile Settings
-                </div>
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            <h2 className="text-3xl font-black text-mango-dark mb-8">Order History</h2>
-
-            {ordersLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mango-orange"></div>
-              </div>
-            ) : orders.length > 0 ? (
+            {orders.length > 0 ? (
               <div className="space-y-6">
                 {orders.map((order) => (
                   <motion.div
@@ -197,14 +157,11 @@ export const Account: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex gap-3 w-full md:w-auto">
-                          <button 
+                          <button
                             onClick={() => navigate(`/order-confirmation/${order.id}`)}
                             className="flex-grow md:flex-grow-0 px-6 py-3 bg-gray-100 text-mango-dark rounded-xl font-bold text-sm hover:bg-gray-200 transition-all"
                           >
                             View Details
-                          </button>
-                          <button className="flex-grow md:flex-grow-0 px-6 py-3 bg-mango-orange text-white rounded-xl font-bold text-sm hover:bg-mango-orange/90 transition-all shadow-lg shadow-mango-orange/10">
-                            Reorder
                           </button>
                         </div>
                       </div>
@@ -212,23 +169,31 @@ export const Account: React.FC = () => {
                   </motion.div>
                 ))}
               </div>
-            ) : (
+            ) : hasSearched ? (
               <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
                   <Package size={40} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No orders yet</h3>
-                <p className="text-gray-500">When you place an order, it will appear here.</p>
-                <button 
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No orders found</h3>
+                <p className="text-gray-500">We could not find any order with that phone number.</p>
+              </div>
+            ) : (
+              <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+                  <Search size={40} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Check your latest order</h3>
+                <p className="text-gray-500">Enter your phone number above to see pending, confirmed, and delivered orders.</p>
+                <button
                   onClick={() => navigate('/products')}
                   className="mt-6 text-mango-orange font-bold hover:underline"
                 >
-                  Start Shopping
+                  Continue Shopping
                 </button>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -32,6 +32,7 @@ export interface Order {
   id: string;
   customerName: string;
   customerPhone: string;
+  customerPhoneNormalized?: string;
   deliveryAddress: string;
   deliveryArea: string;
   deliveryDivision?: string;
@@ -46,7 +47,7 @@ export interface Order {
   total: number;
   status: OrderStatus;
   createdAt: string;
-  userId: string;
+  userId?: string;
 }
 
 export interface UserProfile {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { useNavigate } from 'react-router-dom';
+import { handleDatabaseError, mapOrderRow, mapProductRow, mapProductToRow, OperationType, supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { Product, Order, OrderStatus } from '../types';
 import { MOCK_PRODUCTS } from '../data/mockData';
@@ -9,12 +9,16 @@ import {
   LayoutDashboard, Package, ShoppingBag, TrendingUp, 
   Plus, Edit2, Trash2, Clock, 
   Search, X, Save, Image as ImageIcon, Settings as SettingsIcon,
-  Store, Truck, Wallet, Boxes, ClipboardList, Users, Bell, CalendarDays, House
+  Store, Truck, Wallet, Boxes, ClipboardList, Users, Bell, CalendarDays, House, Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 
+const ADMIN_EMAIL = 'ashadujjaman2617@gmail.com';
+const LOCAL_DEV_ADMIN_EMAIL = 'admin@local';
+const LOCAL_DEV_ADMIN_PASSWORD = 'admin1234';
+const LOCAL_DEV_ADMIN_KEY = 'harivanga_local_admin_access';
 type AdminTab = 'overview' | 'products' | 'orders' | 'settings';
 type SettingsSection = 'store' | 'delivery' | 'payments' | 'inventory' | 'orders' | 'users' | 'notifications' | 'availability';
 type DeliveryZoneSetting = { id: string; name: string; charge: number };
@@ -139,7 +143,11 @@ const loadSettings = (): AdminSettings => {
 };
 
 export const AdminDashboard: React.FC = () => {
-  const { isAdmin, user, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const isLocalDevHost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -156,7 +164,17 @@ export const AdminDashboard: React.FC = () => {
   const [newZoneCharge, setNewZoneCharge] = useState('');
   const [settingsForm, setSettingsForm] = useState<AdminSettings>(loadSettings);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState(isLocalDevHost ? LOCAL_DEV_ADMIN_EMAIL : ADMIN_EMAIL);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
+  const [isAdminAuthenticating, setIsAdminAuthenticating] = useState(false);
+  const [isLocalDevAuthenticated, setIsLocalDevAuthenticated] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(LOCAL_DEV_ADMIN_KEY) === 'true';
+  });
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const hasAdminAccess = isAdmin || (isLocalDevHost && isLocalDevAuthenticated);
+  const isLocalDevBypass = isLocalDevHost && isLocalDevAuthenticated && !isAdmin;
   
   // Form states
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -180,62 +198,144 @@ export const AdminDashboard: React.FC = () => {
     return () => window.clearTimeout(timeout);
   }, [settingsSavedMessage]);
 
+  const loadAdminData = async () => {
+    if (isLocalDevBypass) {
+      setErrorMessage(null);
+      setProducts(MOCK_PRODUCTS);
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setErrorMessage(null);
+      const [productsResult, ordersResult] = await Promise.all([
+        supabase.from('products').select('*').order('name', { ascending: true }),
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
+      ]);
+
+      if (productsResult.error) {
+        throw productsResult.error;
+      }
+
+      if (ordersResult.error) {
+        throw ordersResult.error;
+      }
+
+      setProducts((productsResult.data ?? []).map(mapProductRow));
+      setOrders((ordersResult.data ?? []).map(mapOrderRow));
+    } catch (error) {
+      console.error('Failed to load admin data', error);
+      setErrorMessage('Failed to load admin data. Check Supabase tables, policies, and realtime settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!isAdmin) {
+    if (!hasAdminAccess) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     setErrorMessage(null);
+    void loadAdminData();
 
-    const productsUnsubscribe = onSnapshot(
-      collection(db, 'products'),
-      (snapshot) => {
-        setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-      },
-      (error) => {
-        console.error('Failed to load products', error);
-        setErrorMessage('Failed to load admin data. Check Firestore permissions and indexes.');
-        setLoading(false);
-      }
-    );
+    const productsChannel = supabase
+      .channel('admin-products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+        void loadAdminData();
+      })
+      .subscribe();
 
-    const ordersUnsubscribe = onSnapshot(
-      query(collection(db, 'orders'), orderBy('createdAt', 'desc')),
-      (snapshot) => {
-        setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Failed to load orders', error);
-        setErrorMessage('Failed to load admin data. Check Firestore permissions and indexes.');
-        setLoading(false);
-      }
-    );
+    const ordersChannel = supabase
+      .channel('admin-orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        void loadAdminData();
+      })
+      .subscribe();
 
     return () => {
-      productsUnsubscribe();
-      ordersUnsubscribe();
+      void supabase.removeChannel(productsChannel);
+      void supabase.removeChannel(ordersChannel);
     };
-  }, [isAdmin]);
+  }, [hasAdminAccess, isLocalDevBypass]);
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    if (isLocalDevBypass) {
+      setOrders((current) => current.map((order) => (order.id === orderId ? { ...order, status } : order)));
+      return;
+    }
+
     try {
-      await updateDoc(doc(db, 'orders', orderId), { status });
+      const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
+      if (error) {
+        throw error;
+      }
+      await loadAdminData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'orders');
+      handleDatabaseError(error, OperationType.UPDATE, 'orders');
     }
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocalDevBypass) {
+      const nextProduct: Product = {
+        id: editingProduct?.id ?? `local-product-${Date.now()}`,
+        name: productForm.name ?? '',
+        description: productForm.description ?? '',
+        image: productForm.image ?? '',
+        pricePerKg: productForm.pricePerKg ?? 0,
+        stock: productForm.stock ?? 0,
+        variety: productForm.variety ?? 'Himsagar',
+        origin: productForm.origin ?? 'Rajshahi',
+        tasteProfile: productForm.tasteProfile ?? '',
+        isAvailable: productForm.isAvailable ?? true,
+        variants: productForm.variants ?? [{ weight: '1kg', price: productForm.pricePerKg ?? 0 }],
+      };
+
+      setProducts((current) =>
+        editingProduct
+          ? current.map((product) => (product.id === editingProduct.id ? nextProduct : product))
+          : [...current, nextProduct]
+      );
+      setIsProductModalOpen(false);
+      setEditingProduct(null);
+      setProductForm({
+        name: '',
+        description: '',
+        image: '',
+        pricePerKg: 0,
+        stock: 0,
+        variety: 'Himsagar',
+        origin: 'Rajshahi',
+        tasteProfile: '',
+        isAvailable: true,
+        variants: [{ weight: '1kg', price: 0 }]
+      });
+      return;
+    }
+
     try {
       if (editingProduct) {
-        await updateDoc(doc(db, 'products', editingProduct.id), productForm);
+        const { error } = await supabase
+          .from('products')
+          .update(mapProductToRow(productForm))
+          .eq('id', editingProduct.id);
+        if (error) {
+          throw error;
+        }
       } else {
-        await addDoc(collection(db, 'products'), productForm);
+        const { error } = await supabase
+          .from('products')
+          .insert(mapProductToRow(productForm));
+        if (error) {
+          throw error;
+        }
       }
+      await loadAdminData();
       setIsProductModalOpen(false);
       setEditingProduct(null);
       setProductForm({
@@ -251,16 +351,25 @@ export const AdminDashboard: React.FC = () => {
         variants: [{ weight: '1kg', price: 0 }]
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'products');
+      handleDatabaseError(error, OperationType.WRITE, 'products');
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
+      if (isLocalDevBypass) {
+        setProducts((current) => current.filter((product) => product.id !== id));
+        return;
+      }
+
       try {
-        await deleteDoc(doc(db, 'products', id));
+        const { error } = await supabase.from('products').delete().eq('id', id);
+        if (error) {
+          throw error;
+        }
+        await loadAdminData();
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, 'products');
+        handleDatabaseError(error, OperationType.DELETE, 'products');
       }
     }
   };
@@ -325,13 +434,23 @@ export const AdminDashboard: React.FC = () => {
     }
 
     try {
+      if (isLocalDevBypass) {
+        setProducts((current) => [...current, ...missingProducts]);
+        window.alert(`Added ${missingProducts.length} demo product${missingProducts.length > 1 ? 's' : ''}.`);
+        return;
+      }
+
       for (const product of missingProducts) {
         const { id, ...data } = product;
-        await addDoc(collection(db, 'products'), data);
+        const { error } = await supabase.from('products').insert(mapProductToRow(data));
+        if (error) {
+          throw error;
+        }
       }
+      await loadAdminData();
       window.alert(`Added ${missingProducts.length} demo product${missingProducts.length > 1 ? 's' : ''}.`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'products');
+      handleDatabaseError(error, OperationType.WRITE, 'products');
     }
   };
 
@@ -345,6 +464,46 @@ export const AdminDashboard: React.FC = () => {
       setSettingsForm((current) => ({ ...current, logoUrl: result }));
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleAdminLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAdminLoginError(null);
+
+    const normalizedEmail = adminEmail.trim().toLowerCase();
+    if (isLocalDevHost && normalizedEmail === LOCAL_DEV_ADMIN_EMAIL && adminPassword === LOCAL_DEV_ADMIN_PASSWORD) {
+      window.localStorage.setItem(LOCAL_DEV_ADMIN_KEY, 'true');
+      setIsLocalDevAuthenticated(true);
+      setAdminPassword('');
+      return;
+    }
+
+    if (normalizedEmail !== ADMIN_EMAIL) {
+      setAdminLoginError('Use the authorized admin email for this portal.');
+      return;
+    }
+
+    setIsAdminAuthenticating(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: adminPassword,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user?.email?.toLowerCase() !== ADMIN_EMAIL) {
+        await supabase.auth.signOut();
+        setAdminLoginError('This account does not have admin access.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Admin authentication failed.';
+      setAdminLoginError(message);
+    } finally {
+      setIsAdminAuthenticating(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -365,12 +524,84 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  if (!isAdmin) {
+  if (!hasAdminAccess) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
-        <p className="text-gray-500 mb-8">You do not have permission to view this page.</p>
-        <button onClick={() => window.location.href = '/'} className="text-mango-orange font-bold">Back to Home</button>
+      <div className="min-h-screen bg-[#0c1326] px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-md items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full rounded-[28px] border border-white/8 bg-[#101933] p-3 shadow-[0_30px_120px_rgba(2,6,23,0.45)] sm:p-5"
+          >
+            <div className="rounded-[24px] border border-white/6 bg-[#11192f] px-4 py-6 sm:px-6 sm:py-7">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[18px] border border-[#7b2638] bg-[#2a1830] text-[#ff4d4f] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <Lock size={24} strokeWidth={2.1} />
+              </div>
+
+              <div className="mt-4 text-center">
+                <h1 className="text-[2rem] font-black tracking-tight text-white">Admin Portal</h1>
+                <p className="mt-1.5 text-sm text-[#6f86b0]">Enter club management password</p>
+              </div>
+
+              <form onSubmit={handleAdminLogin} className="mt-6 space-y-5">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-[0.24em] text-[#6d7ea5]">
+                    Admin Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    className="mt-2.5 h-12 w-full rounded-[14px] border border-[#ff4d4f] bg-[#dfe7f5] px-4 text-sm text-black outline-none transition placeholder:text-black/45 focus:border-[#ff6b6d] focus:ring-4 focus:ring-[#ff4d4f]/10"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-black uppercase tracking-[0.24em] text-[#6d7ea5]">
+                    Master Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="mt-2.5 h-12 w-full rounded-[14px] border border-white/8 bg-[#dfe7f5] px-4 text-center text-sm font-bold tracking-[0.2em] text-black outline-none transition placeholder:text-black/35 focus:border-[#ff6b6d] focus:ring-4 focus:ring-[#ff4d4f]/10"
+                  />
+                </div>
+
+                {adminLoginError && (
+                  <div className="rounded-[18px] border border-[#ff4d4f]/25 bg-[#3a1d28] px-4 py-3 text-sm font-medium text-[#ffb7b8]">
+                    {adminLoginError}
+                  </div>
+                )}
+
+                {isLocalDevHost && (
+                  <div className="rounded-[16px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-xs font-medium text-[#b8c7ea]">
+                    Local test login: <span className="font-bold text-white">{LOCAL_DEV_ADMIN_EMAIL}</span> / <span className="font-bold text-white">{LOCAL_DEV_ADMIN_PASSWORD}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isAdminAuthenticating}
+                  className="flex h-14 w-full items-center justify-center rounded-[14px] border border-white/8 bg-[#202d45] text-lg font-black text-white transition hover:bg-[#25334f] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isAdminAuthenticating ? 'Authenticating...' : 'Authenticate'}
+                </button>
+              </form>
+
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="mt-4 w-full text-center text-xs font-semibold text-[#8da0c5] transition hover:text-white"
+              >
+                Back to Home
+              </button>
+            </div>
+          </motion.div>
+        </div>
       </div>
     );
   }
@@ -463,9 +694,22 @@ export const AdminDashboard: React.FC = () => {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'availability', label: 'Availability', icon: CalendarDays },
   ];
+  const panelTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
+  const panelMotionProps = {
+    initial: { opacity: 0, y: 18 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -12 },
+    transition: panelTransition,
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={panelTransition}
+      className="min-h-screen bg-gray-50 flex flex-col lg:flex-row"
+    >
       {/* Sidebar */}
       <aside className="w-64 bg-mango-dark text-white hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="p-8">
@@ -475,7 +719,7 @@ export const AdminDashboard: React.FC = () => {
 
           <nav className="space-y-2">
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 transition-all"
             >
               <House size={20} /> Home
@@ -528,7 +772,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => window.location.href = '/'}
+                onClick={() => navigate('/')}
                 className="inline-flex items-center justify-center rounded-2xl bg-white/10 p-3 text-white transition hover:bg-white/15"
                 aria-label="Go to home page"
               >
@@ -573,8 +817,9 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="p-4 sm:p-6 lg:p-12">
+          <AnimatePresence mode="wait" initial={false}>
         {activeTab === 'overview' && (
-          <div className="space-y-12">
+          <motion.section key="overview" {...panelMotionProps} className="space-y-12">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h1 className="text-2xl sm:text-3xl font-black text-mango-dark">Overview</h1>
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -700,11 +945,11 @@ export const AdminDashboard: React.FC = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </motion.section>
         )}
 
         {activeTab === 'products' && (
-          <div className="space-y-8">
+          <motion.section key="products" {...panelMotionProps} className="space-y-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h1 className="text-2xl sm:text-3xl font-black text-mango-dark">Products</h1>
               <button 
@@ -897,11 +1142,11 @@ export const AdminDashboard: React.FC = () => {
                 <p className="mt-2 text-sm text-gray-500">Adjust your search or stock filters to find products faster.</p>
               </div>
             )}
-          </div>
+          </motion.section>
         )}
 
         {activeTab === 'orders' && (
-          <div className="space-y-8">
+          <motion.section key="orders" {...panelMotionProps} className="space-y-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black text-mango-dark">Orders</h1>
@@ -1084,11 +1329,11 @@ export const AdminDashboard: React.FC = () => {
                 <p className="mt-2 text-sm text-gray-500">Try a different search, status, or date filter.</p>
               </div>
             )}
-          </div>
+          </motion.section>
         )}
 
         {activeTab === 'settings' && (
-          <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-[#faf8f5] shadow-sm">
+          <motion.section key="settings" {...panelMotionProps} className="overflow-hidden rounded-[28px] border border-gray-200 bg-[#faf8f5] shadow-sm">
             <div className="border-b border-[#e8e2d8] px-6 py-4 sm:px-8">
               <h1 className="text-[2rem] font-black leading-none text-[#2b2621]">Settings</h1>
               <p className="mt-2 text-sm text-[#7a7065]">Manage your store configuration</p>
@@ -1119,7 +1364,9 @@ export const AdminDashboard: React.FC = () => {
 
             <form id="admin-settings-form" onSubmit={handleSaveSettings} className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
-                <div className={`${activeSettingsSection === 'store' ? 'block' : 'hidden'} rounded-[24px] border border-[#e6ddd2] bg-white p-6 shadow-sm sm:p-8`}>
+                <AnimatePresence mode="wait" initial={false}>
+                {activeSettingsSection === 'store' && (
+                <motion.div key="store" {...panelMotionProps} className="rounded-[24px] border border-[#e6ddd2] bg-white p-6 shadow-sm sm:p-8">
                   <h2 className="text-[2rem] font-black leading-none text-[#201b16]">Store Information</h2>
                   <p className="mt-2 text-base text-[#8a7c6d]">Basic information about your store</p>
                   <div className="mt-7 grid grid-cols-1 gap-x-4 gap-y-5 md:grid-cols-2">
@@ -1170,9 +1417,11 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+                )}
 
-                <div className={`${activeSettingsSection === 'delivery' ? 'block' : 'hidden'} rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7`}>
+                {activeSettingsSection === 'delivery' && (
+                <motion.div key="delivery" {...panelMotionProps} className="rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
                   <h2 className="text-2xl font-black text-mango-dark">Delivery Configuration</h2>
                   <p className="mt-1 text-sm text-gray-500">Manage delivery zones, charges, and options</p>
                   <div className="mt-6 space-y-5">
@@ -1221,9 +1470,11 @@ export const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+                )}
 
-                <div className={`${activeSettingsSection === 'payments' ? 'block' : 'hidden'} rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7`}>
+                {activeSettingsSection === 'payments' && (
+                <motion.div key="payments" {...panelMotionProps} className="rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
                   <h2 className="text-2xl font-black text-mango-dark">Payment Methods</h2>
                   <p className="mt-1 text-sm text-gray-500">Configure accepted payment methods</p>
                   <div className="mt-6 space-y-4">
@@ -1250,9 +1501,11 @@ export const AdminDashboard: React.FC = () => {
                     <textarea value={settingsForm.mobilePaymentSettings} onChange={(e) => updateSettings('mobilePaymentSettings', e.target.value)} rows={3} placeholder="Mobile payment settings" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20" />
                     <textarea value={settingsForm.bankSettings} onChange={(e) => updateSettings('bankSettings', e.target.value)} rows={3} placeholder="Bank settings" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20" />
                   </div>
-                </div>
+                </motion.div>
+                )}
 
-                <div className={`${activeSettingsSection === 'inventory' ? 'block' : 'hidden'} rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7`}>
+                {activeSettingsSection === 'inventory' && (
+                <motion.div key="inventory" {...panelMotionProps} className="rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
                   <h2 className="text-2xl font-black text-mango-dark">Inventory Settings</h2>
                   <p className="mt-1 text-sm text-gray-500">Configure stock alerts and inventory rules</p>
                   <div className="mt-6 space-y-5">
@@ -1290,9 +1543,11 @@ export const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+                )}
 
-                <div className={`${activeSettingsSection === 'orders' ? 'block' : 'hidden'} rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7`}>
+                {activeSettingsSection === 'orders' && (
+                <motion.div key="orders-settings" {...panelMotionProps} className="rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
                   <h2 className="text-2xl font-black text-mango-dark">Order Settings</h2>
                   <p className="mt-1 text-sm text-gray-500">Configure order processing rules</p>
                   <div className="mt-6 space-y-5">
@@ -1331,21 +1586,15 @@ export const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+                )}
 
-                <div className={`${activeSettingsSection === 'users' || activeSettingsSection === 'notifications' || activeSettingsSection === 'availability' ? 'block' : 'hidden'} rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7`}>
-                  <h2 className="text-2xl font-black text-mango-dark">
-                    {activeSettingsSection === 'users' ? 'Users' : activeSettingsSection === 'notifications' ? 'Notifications' : 'Availability'}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {activeSettingsSection === 'users'
-                      ? 'Manage admin users and roles'
-                      : activeSettingsSection === 'notifications'
-                      ? 'Configure email and SMS notifications'
-                      : 'Manage product visibility and seasonal settings'}
-                  </p>
+                {activeSettingsSection === 'users' && (
+                <motion.div key="users" {...panelMotionProps} className="rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
+                  <h2 className="text-2xl font-black text-mango-dark">Users</h2>
+                  <p className="mt-1 text-sm text-gray-500">Manage admin users and roles</p>
                   <div className="mt-5 grid grid-cols-1 gap-4">
-                    <div className={activeSettingsSection === 'users' ? 'space-y-4' : 'hidden'}>
+                    <div className="space-y-4">
                       {settingsForm.adminUserEntries.map((adminUser) => (
                         <div key={adminUser.id} className="flex items-center justify-between rounded-3xl bg-[#f8f7f5] px-4 py-4">
                           <div className="flex items-center gap-4">
@@ -1365,8 +1614,16 @@ export const AdminDashboard: React.FC = () => {
                         Add New User
                       </button>
                     </div>
+                  </div>
+                </motion.div>
+                )}
 
-                    <div className={activeSettingsSection === 'notifications' ? 'space-y-6' : 'hidden'}>
+                {activeSettingsSection === 'notifications' && (
+                <motion.div key="notifications" {...panelMotionProps} className="rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
+                  <h2 className="text-2xl font-black text-mango-dark">Notifications</h2>
+                  <p className="mt-1 text-sm text-gray-500">Configure email and SMS notifications</p>
+                  <div className="mt-5 grid grid-cols-1 gap-4">
+                    <div className="space-y-6">
                       <div>
                         <p className="mb-4 text-sm font-semibold text-mango-dark">Email Notifications</p>
                         <div className="space-y-3">
@@ -1407,8 +1664,16 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </motion.div>
+                )}
 
-                    <div className={activeSettingsSection === 'availability' ? 'space-y-4' : 'hidden'}>
+                {activeSettingsSection === 'availability' && (
+                <motion.div key="availability" {...panelMotionProps} className="rounded-[26px] border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
+                  <h2 className="text-2xl font-black text-mango-dark">Availability</h2>
+                  <p className="mt-1 text-sm text-gray-500">Manage product visibility and seasonal settings</p>
+                  <div className="mt-5 grid grid-cols-1 gap-4">
+                    <div className="space-y-4">
                       {[
                         { key: 'storeOpen' as const, title: 'Store Open', desc: 'Toggle store availability for customers' },
                         { key: 'showOutOfSeasonProducts' as const, title: 'Show Out of Season Products', desc: 'Display products marked as out of season' },
@@ -1436,7 +1701,9 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+                )}
+                </AnimatePresence>
 
                 <div className={`flex flex-col gap-3 sm:flex-row sm:items-center ${activeSettingsSection === 'store' ? 'sm:justify-start' : 'sm:justify-between'}`}>
                   <div className={`flex flex-wrap items-center gap-3 ${activeSettingsSection === 'store' ? 'hidden' : 'flex'}`}>
@@ -1463,8 +1730,9 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </form>
           </div>
-          </div>
+          </motion.section>
         )}
+          </AnimatePresence>
         </div>
       </main>
 
@@ -1617,6 +1885,6 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 };

@@ -100,7 +100,7 @@ const INFO_PAGE_CONTENT: Record<string, InfoPageContent> = {
     eyebrow: 'Policy',
     title: 'Privacy Policy',
     intro: 'Harivanga.com stores only the customer information needed to manage accounts, deliveries, and order history.',
-    highlights: ['Order and address data', 'Firebase-backed auth', 'No unnecessary data collection'],
+    highlights: ['Order and address data', 'Supabase-backed auth', 'No unnecessary data collection'],
     sections: [
       {
         heading: 'What data is used',

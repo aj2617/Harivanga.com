@@ -1,17 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import type { User } from '@supabase/supabase-js';
+import { auth, mapUserProfileRow, mapUserProfileToRow, supabase } from '../supabase';
 import { UserProfile } from '../types';
 
 const ADMIN_EMAIL = 'ashadujjaman2617@gmail.com';
 
-function buildFallbackProfile(firebaseUser: User, role: UserProfile['role']): UserProfile {
+function buildFallbackProfile(authUser: User, role: UserProfile['role']): UserProfile {
+  const metadata = authUser.user_metadata ?? {};
   return {
-    uid: firebaseUser.uid,
-    name: firebaseUser.displayName || '',
-    phone: firebaseUser.phoneNumber || '',
-    email: firebaseUser.email || undefined,
+    uid: authUser.id,
+    name: metadata.full_name || metadata.name || '',
+    phone: metadata.phone || '',
+    email: authUser.email || undefined,
     role,
     savedAddresses: [],
   };
@@ -32,49 +32,100 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let isMounted = true;
+
+    const syncAuthState = async (authUser: User | null) => {
       setLoading(true);
       try {
-        setUser(firebaseUser);
-        if (firebaseUser) {
-          const docRef = doc(db, 'users', firebaseUser.uid);
-          const isAdminEmail = firebaseUser.email === ADMIN_EMAIL;
-          const fallbackProfile = buildFallbackProfile(firebaseUser, isAdminEmail ? 'admin' : 'customer');
-          const docSnap = await getDoc(docRef);
+        if (!isMounted) return;
+        setUser(authUser);
+        if (authUser) {
+          const isAdminEmail = authUser.email === ADMIN_EMAIL;
+          const fallbackProfile = buildFallbackProfile(authUser, isAdminEmail ? 'admin' : 'customer');
+          const { data: existingProfileRow, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', authUser.id)
+            .maybeSingle();
 
-          if (docSnap.exists()) {
-            const existingProfile = docSnap.data() as UserProfile;
+          if (profileError) {
+            throw profileError;
+          }
+
+          if (existingProfileRow) {
+            const existingProfile = mapUserProfileRow(existingProfileRow);
+            const mergedProfile: UserProfile = {
+              ...fallbackProfile,
+              ...existingProfile,
+              role: isAdminEmail ? 'admin' : existingProfile.role,
+            };
 
             if (isAdminEmail && existingProfile.role !== 'admin') {
-              const adminProfile: UserProfile = { ...existingProfile, role: 'admin' };
-              await setDoc(docRef, adminProfile, { merge: true });
-              setProfile(adminProfile);
-            } else {
-              setProfile({ ...fallbackProfile, ...existingProfile });
+              const { error: upsertError } = await supabase
+                .from('users')
+                .upsert(mapUserProfileToRow(mergedProfile), { onConflict: 'id' });
+
+              if (upsertError) {
+                throw upsertError;
+              }
+            }
+
+            if (isMounted) {
+              setProfile(mergedProfile);
             }
           } else {
-            // Create default profile for new users.
             const newProfile: UserProfile = fallbackProfile;
-            await setDoc(docRef, newProfile);
-            setProfile(newProfile);
+            const { error: insertError } = await supabase
+              .from('users')
+              .upsert(mapUserProfileToRow(newProfile), { onConflict: 'id' });
+
+            if (insertError) {
+              throw insertError;
+            }
+
+            if (isMounted) {
+              setProfile(newProfile);
+            }
           }
-        } else {
+        } else if (isMounted) {
           setProfile(null);
         }
       } catch (error) {
         console.error('Failed to initialize auth state', error);
-        if (firebaseUser) {
-          const isAdminEmail = firebaseUser.email === ADMIN_EMAIL;
-          setProfile(buildFallbackProfile(firebaseUser, isAdminEmail ? 'admin' : 'customer'));
+        if (!isMounted) return;
+        if (authUser) {
+          const isAdminEmail = authUser.email === ADMIN_EMAIL;
+          setProfile(buildFallbackProfile(authUser, isAdminEmail ? 'admin' : 'customer'));
         } else {
           setProfile(null);
         }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
+    };
+
+    void auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error('Failed to load auth session', error);
+        if (isMounted) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      void syncAuthState(data.session?.user ?? null);
     });
 
-    return unsubscribe;
+    const { data: subscription } = auth.onAuthStateChange((_event, session) => {
+      void syncAuthState(session?.user ?? null);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.subscription.unsubscribe();
+    };
   }, []);
 
   const isAdmin = profile?.role === 'admin' || user?.email === ADMIN_EMAIL;

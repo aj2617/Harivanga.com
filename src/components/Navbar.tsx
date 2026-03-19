@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, LogOut } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../firebase';
+import { auth } from '../supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from './BrandLogo';
 
@@ -34,7 +34,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Link to="/account" className="p-2 hover:bg-mango-yellow/10 rounded-full transition-colors">
+            <Link to="/account" className="p-2 hover:bg-mango-yellow/10 rounded-full transition-colors" title="Track Order">
               <User size={20} />
             </Link>
             <button onClick={() => navigate('/cart')} className="p-2 hover:bg-mango-yellow/10 rounded-full transition-colors relative">
@@ -82,7 +82,7 @@ export const Navbar: React.FC = () => {
               <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Home</Link>
               <Link to="/products" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Shop Mangoes</Link>
               <Link to="/about" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Our Story</Link>
-              <Link to="/account" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">My Account</Link>
+              <Link to="/account" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium hover:bg-mango-yellow/10 rounded-md">Track Order</Link>
               {user && (
                 <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-base font-medium text-red-500 hover:bg-red-50 rounded-md">Logout</button>
               )}
