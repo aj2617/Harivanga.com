@@ -50,21 +50,34 @@ export function getAuthErrorMessage(error: unknown) {
 
   const message = error.message.toLowerCase();
   if (message.includes('popup') || message.includes('redirect')) {
-    return 'Google sign-in could not be completed. Please try again.';
+    return 'Authentication could not be completed. Please try again.';
   }
   if (message.includes('network')) {
     return 'Network error while signing in. Check your internet connection and try again.';
   }
   if (message.includes('provider')) {
-    return 'Google sign-in is not enabled in Supabase Authentication.';
+    return 'The selected authentication method is not enabled in Supabase Authentication.';
+  }
+  if (message.includes('invalid login credentials')) {
+    return 'Incorrect email or password.';
+  }
+  if (message.includes('email not confirmed')) {
+    return 'Confirm your email address before signing in.';
+  }
+  if (message.includes('user already registered')) {
+    return 'An account with this email already exists.';
   }
   return error.message;
 }
 
-export async function signInWithGoogle() {
+function ensureSupabaseConfig() {
   if (!hasSupabaseConfig) {
     throw new Error('Supabase environment variables are missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
   }
+}
+
+export async function signInWithGoogle() {
+  ensureSupabaseConfig();
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -77,6 +90,48 @@ export async function signInWithGoogle() {
     },
   });
 
+  if (error) {
+    throw error;
+  }
+}
+
+export async function signInWithEmail(email: string, password: string) {
+  ensureSupabaseConfig();
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function signUpWithEmail(email: string, password: string, name?: string) {
+  ensureSupabaseConfig();
+
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim().toLowerCase(),
+    password,
+    options: {
+      data: name ? { name } : undefined,
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function signOutUser() {
+  ensureSupabaseConfig();
+
+  const { error } = await supabase.auth.signOut();
   if (error) {
     throw error;
   }

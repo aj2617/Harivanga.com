@@ -20,7 +20,7 @@ Local product/order fallbacks and the admin test login only run on localhost in 
 
 Add the same Supabase environment values in Netlify.
 
-Also configure Google as an auth provider in Supabase and add your Netlify domain plus local origin as allowed redirect URLs.
+Enable email/password authentication in Supabase Authentication before going live.
 
 ## Production Notes
 

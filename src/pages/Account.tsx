@@ -1,24 +1,104 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mapOrderRow, signInWithGoogle, supabase } from '../supabase';
+import {
+  getAuthErrorMessage,
+  mapOrderRow,
+  signInWithEmail,
+  signOutUser,
+  signUpWithEmail,
+  supabase,
+} from '../supabase';
 import { Seo } from '../components/Seo';
 import { canUseLocalOrderFallback, findLocalDevOrdersByPhone } from '../lib/localDevOrders';
 import { formatCurrency } from '../lib/format';
 import { Order } from '../types';
-import { Search, Package, Clock, CheckCircle2, Truck, Phone } from 'lucide-react';
+import { Search, Package, Clock, CheckCircle2, Truck, Phone, Mail, Lock, User as UserIcon, LogOut } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+import { hasSupabaseConfig } from '../lib/env';
 
 const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, '');
+type AuthMode = 'signin' | 'signup';
 
 export const Account: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [phone, setPhone] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('signin');
+  const [authForm, setAuthForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+  });
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const navigate = useNavigate();
+
+  const handleAuthSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAuthError(null);
+    setAuthMessage(null);
+
+    const email = authForm.email.trim().toLowerCase();
+    const password = authForm.password;
+    const name = authForm.name.trim();
+
+    if (!email || !password) {
+      setAuthError('Enter your email and password.');
+      return;
+    }
+
+    if (authMode === 'signup' && !name) {
+      setAuthError('Enter your full name to create an account.');
+      return;
+    }
+
+    setIsAuthenticating(true);
+    try {
+      if (authMode === 'signup') {
+        const data = await signUpWithEmail(email, password, name);
+        if (data.session) {
+          setAuthMessage('Account created. You are now signed in.');
+        } else {
+          setAuthMessage('Account created. Check your email to confirm the account, then sign in.');
+        }
+      } else {
+        await signInWithEmail(email, password);
+        setAuthMessage('Signed in successfully.');
+      }
+
+      setAuthForm((current) => ({
+        ...current,
+        password: '',
+      }));
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setAuthError(null);
+    setAuthMessage(null);
+    setIsSigningOut(true);
+    try {
+      await signOutUser();
+      setOrders([]);
+      setHasSearched(false);
+      setSearchError(null);
+      setAuthMessage('Signed out successfully.');
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   const handleTrackOrders = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +115,7 @@ export const Account: React.FC = () => {
     try {
       if (!canUseLocalOrderFallback() && !user) {
         setOrders([]);
-        setSearchError('Sign in with Google to view your orders in production.');
+        setSearchError('Sign in with your email and password to view your orders in production.');
         return;
       }
 
@@ -103,22 +183,151 @@ export const Account: React.FC = () => {
             <p className="mt-3 text-gray-500">
               {canUseLocalOrderFallback()
                 ? 'Enter the phone number used at checkout to view your latest order updates.'
-                : 'Use your signed-in account and the checkout phone number to view your latest order updates.'}
+                : 'Use your email account and the checkout phone number to view your latest order updates.'}
             </p>
           </div>
 
-          {!canUseLocalOrderFallback() && !user && (
-            <div className="mt-6 rounded-2xl border border-mango-orange/20 bg-mango-orange/5 px-5 py-4">
-              <p className="text-sm text-mango-dark">
-                Production order lookup is restricted to the customer account that placed the order.
-              </p>
-              <button
-                type="button"
-                onClick={() => void signInWithGoogle()}
-                className="mt-3 rounded-2xl bg-mango-orange px-5 py-3 text-sm font-bold text-white transition-all hover:bg-mango-orange/90"
-              >
-                Sign In With Google
-              </button>
+          {!canUseLocalOrderFallback() && hasSupabaseConfig && (
+            <div className="mt-6 rounded-3xl border border-gray-100 bg-gray-50/80 p-5 sm:p-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-xl">
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-mango-orange">Customer Account</p>
+                  <h2 className="mt-2 text-2xl font-black text-mango-dark">
+                    {user ? 'You are signed in' : 'Sign in to see your order history'}
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Production order lookup is restricted to the customer account that placed the order.
+                  </p>
+                  {user ? (
+                    <div className="mt-4 rounded-2xl border border-gray-200 bg-white px-4 py-4 text-sm text-gray-600">
+                      <p className="font-bold text-mango-dark">{profile?.name || user.email || 'Signed-in customer'}</p>
+                      <p className="mt-1">{user.email}</p>
+                      {profile?.role === 'admin' && (
+                        <p className="mt-2 inline-flex rounded-full bg-mango-orange/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-mango-orange">
+                          Admin access enabled
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-5 flex gap-2 rounded-full bg-white p-1 shadow-sm w-fit">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('signin');
+                          setAuthError(null);
+                          setAuthMessage(null);
+                        }}
+                        className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
+                          authMode === 'signin' ? 'bg-mango-orange text-white' : 'text-gray-500'
+                        }`}
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('signup');
+                          setAuthError(null);
+                          setAuthMessage(null);
+                        }}
+                        className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
+                          authMode === 'signup' ? 'bg-mango-orange text-white' : 'text-gray-500'
+                        }`}
+                      >
+                        Create Account
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleLogout()}
+                    disabled={isSigningOut}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-red-500 shadow-sm transition-all hover:bg-red-50 disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <LogOut size={16} />
+                    {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                  </button>
+                ) : (
+                  <form onSubmit={handleAuthSubmit} className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="space-y-4">
+                      {authMode === 'signup' && (
+                        <label className="space-y-2 block">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <UserIcon size={14} /> Full Name
+                          </span>
+                          <input
+                            type="text"
+                            value={authForm.name}
+                            onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                            placeholder="Enter your full name"
+                          />
+                        </label>
+                      )}
+
+                      <label className="space-y-2 block">
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                          <Mail size={14} /> Email Address
+                        </span>
+                        <input
+                          type="email"
+                          value={authForm.email}
+                          onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                          className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                          placeholder="you@example.com"
+                        />
+                      </label>
+
+                      <label className="space-y-2 block">
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                          <Lock size={14} /> Password
+                        </span>
+                        <input
+                          type="password"
+                          value={authForm.password}
+                          onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                          className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                          placeholder={authMode === 'signup' ? 'Create a strong password' : 'Enter your password'}
+                        />
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={isAuthenticating}
+                        className="w-full rounded-2xl bg-mango-orange px-5 py-3 text-sm font-bold text-white transition-all hover:bg-mango-orange/90 disabled:bg-gray-200"
+                      >
+                        {isAuthenticating
+                          ? authMode === 'signup'
+                            ? 'Creating Account...'
+                            : 'Signing In...'
+                          : authMode === 'signup'
+                            ? 'Create Account'
+                            : 'Sign In'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {authMessage && (
+                <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                  {authMessage}
+                </div>
+              )}
+              {authError && (
+                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {authError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!canUseLocalOrderFallback() && !hasSupabaseConfig && (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
+              Supabase environment variables are missing. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before enabling production account access.
             </div>
           )}
 
