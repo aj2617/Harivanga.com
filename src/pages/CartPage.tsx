@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Minus, Plus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { formatCurrency } from '../lib/format';
+import { getThumbnailImageSrc } from '../lib/imageSources';
 
 export const CartPage: React.FC = () => {
   const { cart, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
@@ -41,7 +42,7 @@ export const CartPage: React.FC = () => {
                 className="fade-up-enter bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-6"
               >
                 <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0">
-                  <img src={item.image} alt={item.productName} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                  <img src={getThumbnailImageSrc(item.image)} alt={item.productName} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 </div>
                 
                 <div className="flex-grow">

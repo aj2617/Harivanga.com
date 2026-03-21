@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image as ImageIcon, Plus, Save, Trash2, X } from 'lucide-react';
 import { Product } from '../../types';
+import { getDisplayImageSrc } from '../../lib/imageSources';
 
 type AdminProductModalProps = {
   editingProduct: Product | null;
@@ -170,7 +171,7 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
               <input
                 ref={productImagesInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/webp,image/png,image/jpeg,image/jpg"
                 multiple
                 onChange={onProductImageUpload}
                 className="hidden"
@@ -184,7 +185,7 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
                   return (
                     <div key={`${image}-${index}`} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
                       <div className="aspect-square overflow-hidden bg-gray-100">
-                        <img src={image} alt={`Product upload ${index + 1}`} className="h-full w-full object-cover" />
+                        <img src={getDisplayImageSrc(image)} alt={`Product upload ${index + 1}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                       </div>
                       <div className="flex items-center gap-2 p-3">
                         <button
@@ -208,7 +209,7 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-                Upload one or more images from your device. Choose one as the primary image for Home and Shop.
+                Upload JPG, PNG, or WebP images. They are converted to optimized WebP with a smaller thumbnail for faster storefront loading.
               </div>
             )}
           </div>

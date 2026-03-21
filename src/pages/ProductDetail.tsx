@@ -15,16 +15,16 @@ import {
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { fetchStorefrontProductById } from '../lib/publicProducts';
-import { useProducts } from '../hooks/useProducts';
+import { hasSupabaseConfig } from '../lib/env';
 import { formatCurrency } from '../lib/format';
 import { Product } from '../types';
-import { getThumbnailImageSrc } from '../lib/imageSources';
+import { getDisplayImageSrc, getThumbnailImageSrc } from '../lib/imageSources';
+import { getLocalDevProducts } from '../lib/localDevProducts';
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart, replaceCart } = useCart();
-  const { products, loading } = useProducts();
   const [product, setProduct] = useState<Product | null>(null);
   const [productLoading, setProductLoading] = useState(true);
 
@@ -34,52 +34,70 @@ export const ProductDetail: React.FC = () => {
   const galleryImages = product ? [product.image, ...(product.images ?? []).filter((image) => image !== product.image)] : [];
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!id) {
       setProduct(null);
       setProductLoading(false);
       return;
     }
 
-    const summaryProduct = products.find((entry) => entry.id === id) ?? null;
-    if (summaryProduct) {
-      setProduct(summaryProduct);
-    }
+    const loadFallbackProduct = async () => {
+      const localProducts = await getLocalDevProducts();
+      if (!cancelled) {
+        setProduct(localProducts.find((entry) => entry.id === id) ?? null);
+      }
+    };
 
     const controller = new AbortController();
     setProductLoading(true);
 
-    void fetchStorefrontProductById(id, controller.signal)
-      .then((fetchedProduct) => {
-        if (fetchedProduct) {
-          setProduct(fetchedProduct);
-        } else if (!summaryProduct) {
-          setProduct(null);
+    const loadProduct = async () => {
+      if (!hasSupabaseConfig) {
+        await loadFallbackProduct();
+        if (!cancelled) {
+          setProductLoading(false);
         }
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) {
+        return;
+      }
+
+      try {
+        const fetchedProduct = await fetchStorefrontProductById(id, controller.signal);
+        if (fetchedProduct) {
+          if (!cancelled) {
+            setProduct(fetchedProduct);
+          }
+          return;
+        }
+
+        await loadFallbackProduct();
+      } catch (error) {
+        if (controller.signal.aborted || cancelled) {
           return;
         }
         console.error('Failed to load product detail', error);
-        if (!summaryProduct) {
-          setProduct(null);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
+        await loadFallbackProduct();
+      } finally {
+        if (!controller.signal.aborted && !cancelled) {
           setProductLoading(false);
         }
-      });
+      }
+    };
 
-    return () => controller.abort();
-  }, [id, products]);
+    void loadProduct();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [id]);
 
   useEffect(() => {
     setSelectedVariant(product?.variants[0] || null);
     setSelectedImage(product?.image || product?.images?.[0] || '');
   }, [product]);
 
-  if (loading || productLoading) {
+  if (productLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mango-orange"></div>
@@ -155,7 +173,7 @@ export const ProductDetail: React.FC = () => {
           <div className="space-y-4 fade-up-enter">
             <div className="relative aspect-square rounded-3xl overflow-hidden bg-gray-100 group">
               <img
-                src={selectedImage || product.image}
+                src={getDisplayImageSrc(selectedImage || product.image)}
                 alt={product.name}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 decoding="async"

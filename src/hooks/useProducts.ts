@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import {
   getLocalDevProducts,
   isLocalDevAdminMode,
@@ -9,11 +8,11 @@ import { fetchStorefrontProducts } from '../lib/publicProducts';
 import { STOREFRONT_PRODUCTS_CACHE_KEY, STOREFRONT_PRODUCTS_CHANGED_EVENT } from '../lib/storefrontSync';
 import { hasSupabaseConfig } from '../lib/env';
 import { Product } from '../types';
-import { queryClient } from '../lib/queryClient';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const LEGACY_CACHE_KEY = STOREFRONT_PRODUCTS_CACHE_KEY;
 const PERSISTENT_CACHE_KEY = `${STOREFRONT_PRODUCTS_CACHE_KEY}:persistent`;
+const memoryCache = new Map<string, { products: Product[]; timestamp: number }>();
 
 type UseProductsOptions = {
   search?: string;
@@ -36,6 +35,11 @@ function readStorageCache(key: string) {
 }
 
 function readCachedProducts() {
+  const inMemory = memoryCache.get(PERSISTENT_CACHE_KEY);
+  if (inMemory && Date.now() - inMemory.timestamp < CACHE_TTL_MS) {
+    return inMemory.products;
+  }
+
   const parsed = readStorageCache(PERSISTENT_CACHE_KEY) ?? readStorageCache(LEGACY_CACHE_KEY);
   if (!parsed) {
     return null;
@@ -46,6 +50,8 @@ function readCachedProducts() {
 }
 
 function writeCachedProducts(products: Product[]) {
+  memoryCache.set(PERSISTENT_CACHE_KEY, { products, timestamp: Date.now() });
+
   if (typeof window === 'undefined') {
     return;
   }
@@ -60,19 +66,101 @@ function writeCachedProducts(products: Product[]) {
   }
 }
 
+function getCacheKey(search: string, variety: string) {
+  return JSON.stringify(['storefront-products', search, variety]);
+}
+
 export function useProducts(options?: UseProductsOptions) {
   const localDevMode = isLocalDevAdminMode();
   const search = options?.search?.trim() ?? '';
   const variety = options?.variety?.trim() ?? '';
-  const queryKey = ['storefront-products', search, variety] as const;
   const isDefaultQuery = search.length === 0 && variety.length === 0;
+  const cacheKey = getCacheKey(search, variety);
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (isDefaultQuery) {
+      return readCachedProducts() ?? [];
+    }
+
+    return memoryCache.get(cacheKey)?.products ?? [];
+  });
+  const [loading, setLoading] = useState(localDevMode || hasSupabaseConfig);
+  const [error, setError] = useState<string | null>(hasSupabaseConfig ? null : 'Store configuration is incomplete.');
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadProducts = async (forceRefresh = false) => {
+      if (!localDevMode && !hasSupabaseConfig) {
+        setProducts([]);
+        setLoading(false);
+        setError('Store configuration is incomplete.');
+        return;
+      }
+
+      if (localDevMode) {
+        setProducts(await getLocalDevProducts());
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      const cachedEntry = !forceRefresh ? memoryCache.get(cacheKey) : null;
+      if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_TTL_MS) {
+        setProducts(cachedEntry.products);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      if (isDefaultQuery) {
+        const storageCache = !forceRefresh ? readCachedProducts() : null;
+        if (storageCache) {
+          memoryCache.set(cacheKey, { products: storageCache, timestamp: Date.now() });
+          setProducts(storageCache);
+          setLoading(false);
+          setError(null);
+          return;
+        }
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const nextProducts = await fetchStorefrontProducts({ search, variety });
+
+        if (cancelled) {
+          return;
+        }
+
+        memoryCache.set(cacheKey, { products: nextProducts, timestamp: Date.now() });
+        if (isDefaultQuery) {
+          writeCachedProducts(nextProducts);
+        }
+        setProducts(nextProducts);
+      } catch (fetchError) {
+        console.error('Could not load storefront products.', fetchError);
+        if (!cancelled) {
+          setProducts([]);
+          setError('Could not load the product catalog.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
     const handleRefresh = () => {
-      void queryClient.invalidateQueries({ queryKey: ['storefront-products'] });
+      memoryCache.delete(cacheKey);
+      if (isDefaultQuery) {
+        memoryCache.delete(PERSISTENT_CACHE_KEY);
+      }
+      void loadProducts(true);
     };
 
     if (localDevMode) {
+      void loadProducts();
       window.addEventListener('storage', handleRefresh);
       window.addEventListener(LOCAL_DEV_PRODUCTS_UPDATED_EVENT, handleRefresh);
       window.addEventListener(STOREFRONT_PRODUCTS_CHANGED_EVENT, handleRefresh);
@@ -84,40 +172,17 @@ export function useProducts(options?: UseProductsOptions) {
       };
     }
 
+    void loadProducts();
     window.addEventListener(STOREFRONT_PRODUCTS_CHANGED_EVENT, handleRefresh);
     return () => {
+      cancelled = true;
       window.removeEventListener(STOREFRONT_PRODUCTS_CHANGED_EVENT, handleRefresh);
     };
-  }, [localDevMode]);
-
-  const query = useQuery({
-    queryKey,
-    enabled: localDevMode || hasSupabaseConfig,
-    initialData: isDefaultQuery ? readCachedProducts() ?? undefined : undefined,
-    queryFn: async ({ signal }) => {
-      if (localDevMode) {
-        return getLocalDevProducts();
-      }
-
-      const nextProducts = await fetchStorefrontProducts(
-        {
-          search,
-          variety,
-        },
-        signal
-      );
-
-      if (isDefaultQuery) {
-        writeCachedProducts(nextProducts);
-      }
-
-      return nextProducts;
-    },
-  });
+  }, [cacheKey, isDefaultQuery, localDevMode, search, variety]);
 
   return {
-    products: query.data ?? [],
-    loading: query.isLoading,
-    error: query.isError ? 'Could not load the product catalog.' : hasSupabaseConfig ? null : 'Store configuration is incomplete.',
+    products,
+    loading,
+    error,
   };
 }

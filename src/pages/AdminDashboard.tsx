@@ -1,24 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleDatabaseError, mapOrderRow, mapProductRow, mapProductToRow, OperationType, supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { Product, Order, OrderStatus } from '../types';
-import { MOCK_PRODUCTS } from '../data/mockData';
-import { getLocalDevProducts, isLocalDevAdminMode, isLocalDevHost, LOCAL_DEV_ADMIN_KEY, setLocalDevProducts } from '../lib/localDevProducts';
+import { getLocalDevProducts, getMockProducts, isLocalDevAdminMode, isLocalDevHost, LOCAL_DEV_ADMIN_KEY, setLocalDevProducts } from '../lib/localDevProducts';
 import { getLocalDevOrders, LOCAL_DEV_ORDERS_UPDATED_EVENT, setLocalDevOrders } from '../lib/localDevOrders';
 import { notifyStorefrontProductsChanged } from '../lib/storefrontSync';
+import { optimizeProductUpload } from '../lib/imageOptimization';
 import { getThumbnailImageSrc } from '../lib/imageSources';
 import { BrandLogo } from '../components/BrandLogo';
-import { AdminProductModal } from '../components/admin/AdminProductModal';
-import { AdminSettingsPanel } from '../components/admin/AdminSettingsPanel';
+import { formatLongDate, formatMediumDate, formatShortMonthDay } from '../lib/dates';
 import { 
   LayoutDashboard, Package, ShoppingBag, TrendingUp, 
   Plus, Edit2, Trash2,
-  Search, X, Save, Image as ImageIcon, Settings as SettingsIcon,
-  Truck, Wallet, Boxes, ClipboardList, Users, Bell, CalendarDays, House, Lock
+  Search, Settings as SettingsIcon, House, Lock
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { canUseDevelopmentFallbacks } from '../lib/env';
+
+const AdminProductModal = lazy(() =>
+  import('../components/admin/AdminProductModal').then((module) => ({ default: module.AdminProductModal }))
+);
+const AdminSettingsPanel = lazy(() =>
+  import('../components/admin/AdminSettingsPanel').then((module) => ({ default: module.AdminSettingsPanel }))
+);
 
 const LOCAL_DEV_ADMIN_EMAIL = 'admin@local';
 const LOCAL_DEV_ADMIN_PASSWORD = 'admin1234';
@@ -253,7 +257,7 @@ export const AdminDashboard: React.FC = () => {
   const loadProductsPage = async () => {
     if (isLocalDevBypass) {
       const query = productSearchQuery.trim().toLowerCase();
-      const allProducts = getLocalDevProducts().filter((product) => {
+      const allProducts = (await getLocalDevProducts()).filter((product) => {
         const matchesQuery = !query || product.name.toLowerCase().includes(query);
         const matchesStatus =
           productStatusFilter === 'all' ||
@@ -578,7 +582,8 @@ export const AdminDashboard: React.FC = () => {
 
     try {
       if (isLocalDevBypass) {
-        const missingProducts = MOCK_PRODUCTS.filter((product) => !existingNames.has(product.name.toLowerCase()));
+        const mockProducts = await getMockProducts();
+        const missingProducts = mockProducts.filter((product) => !existingNames.has(product.name.toLowerCase()));
         if (missingProducts.length === 0) {
           window.alert('All demo products are already available.');
           return;
@@ -600,7 +605,8 @@ export const AdminDashboard: React.FC = () => {
       }
       existingNames = new Set((existingRows ?? []).map((row) => row.name.toLowerCase()));
 
-      const missingProducts = MOCK_PRODUCTS.filter((product) => !existingNames.has(product.name.toLowerCase()));
+      const mockProducts = await getMockProducts();
+      const missingProducts = mockProducts.filter((product) => !existingNames.has(product.name.toLowerCase()));
       if (missingProducts.length === 0) {
         window.alert('All demo products are already available.');
         return;
@@ -625,17 +631,7 @@ export const AdminDashboard: React.FC = () => {
     const files = Array.from(event.target.files ?? []) as File[];
     if (files.length === 0) return;
 
-    const images = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-          })
-      )
-    );
+    const images = await Promise.all(files.map((file) => optimizeProductUpload(file)));
 
     setProductForm((current) => {
       const currentImages = current.images ?? (current.image ? [current.image] : []);
@@ -724,7 +720,7 @@ export const AdminDashboard: React.FC = () => {
     const normalizedEmail = adminEmail.trim().toLowerCase();
     if (localHost && normalizedEmail === LOCAL_DEV_ADMIN_EMAIL && adminPassword === LOCAL_DEV_ADMIN_PASSWORD) {
       window.localStorage.setItem(LOCAL_DEV_ADMIN_KEY, 'true');
-      setLocalDevProducts(getLocalDevProducts());
+      setLocalDevProducts(await getLocalDevProducts());
       setIsLocalDevAuthenticated(true);
       setAdminPassword('');
       return;
@@ -961,7 +957,7 @@ export const AdminDashboard: React.FC = () => {
               </button>
               <div className="text-right">
                 <p className="text-xs text-white/50">Today</p>
-                <p className="text-sm font-semibold">{format(new Date(), 'MMM dd')}</p>
+                <p className="text-sm font-semibold">{formatShortMonthDay(new Date())}</p>
               </div>
             </div>
           </div>
@@ -1011,7 +1007,7 @@ export const AdminDashboard: React.FC = () => {
                     Seed Database
                   </button>
                 )}
-                <div className="text-sm text-gray-400 font-medium">{format(new Date(), 'PPPP')}</div>
+                <div className="text-sm text-gray-400 font-medium">{formatLongDate(new Date())}</div>
               </div>
             </div>
 
@@ -1372,7 +1368,7 @@ export const AdminDashboard: React.FC = () => {
                       <td className="px-8 py-4">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-gray-400">#{order.id.slice(-6).toUpperCase()}</span>
-                          <span className="mt-1 text-xs text-gray-400">{format(new Date(order.createdAt), 'MMM dd, yyyy')}</span>
+                          <span className="mt-1 text-xs text-gray-400">{formatMediumDate(new Date(order.createdAt))}</span>
                         </div>
                       </td>
                       <td className="px-8 py-4">
@@ -1431,7 +1427,7 @@ export const AdminDashboard: React.FC = () => {
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Order ID</p>
                       <p className="font-bold text-mango-dark">#{order.id.slice(-6).toUpperCase()}</p>
-                      <p className="mt-1 text-xs text-gray-400">{format(new Date(order.createdAt), 'MMM dd, yyyy')}</p>
+                      <p className="mt-1 text-xs text-gray-400">{formatMediumDate(new Date(order.createdAt))}</p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getOrderStatusClasses(order.status)}`}>
                       {order.status}
@@ -1524,36 +1520,40 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {activeTab === 'settings' && (
-          <AdminSettingsPanel
-            promoVideoUrl={settingsForm.promoVideoUrl}
-            promoDescription={settingsForm.promoDescription}
-            savedMessage={settingsSavedMessage}
-            onPromoVideoUrlChange={(value) => setSettingsForm({ ...settingsForm, promoVideoUrl: value })}
-            onPromoDescriptionChange={(value) => setSettingsForm({ ...settingsForm, promoDescription: value })}
-            onReset={handleResetSettings}
-            onSubmit={handleSaveSettings}
-          />
+          <Suspense fallback={<div className="rounded-3xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500">Loading settings...</div>}>
+            <AdminSettingsPanel
+              promoVideoUrl={settingsForm.promoVideoUrl}
+              promoDescription={settingsForm.promoDescription}
+              savedMessage={settingsSavedMessage}
+              onPromoVideoUrlChange={(value) => setSettingsForm({ ...settingsForm, promoVideoUrl: value })}
+              onPromoDescriptionChange={(value) => setSettingsForm({ ...settingsForm, promoDescription: value })}
+              onReset={handleResetSettings}
+              onSubmit={handleSaveSettings}
+            />
+          </Suspense>
         )}
         </div>
       </main>
 
       {/* Product Modal */}
       {isProductModalOpen && (
-        <AdminProductModal
-          editingProduct={editingProduct}
-          productForm={productForm}
-          productOrigins={PRODUCT_ORIGINS}
-          productImagesInputRef={productImagesInputRef}
-          onClose={resetProductModal}
-          onSubmit={handleSaveProduct}
-          onChange={setProductForm}
-          onVariantChange={handleVariantChange}
-          onAddVariant={handleAddVariant}
-          onRemoveVariant={handleRemoveVariant}
-          onProductImageUpload={handleProductImageUpload}
-          onPrimaryImageSelect={handlePrimaryImageSelect}
-          onRemoveProductImage={handleRemoveProductImage}
-        />
+        <Suspense fallback={null}>
+          <AdminProductModal
+            editingProduct={editingProduct}
+            productForm={productForm}
+            productOrigins={PRODUCT_ORIGINS}
+            productImagesInputRef={productImagesInputRef}
+            onClose={resetProductModal}
+            onSubmit={handleSaveProduct}
+            onChange={setProductForm}
+            onVariantChange={handleVariantChange}
+            onAddVariant={handleAddVariant}
+            onRemoveVariant={handleRemoveVariant}
+            onProductImageUpload={handleProductImageUpload}
+            onPrimaryImageSelect={handlePrimaryImageSelect}
+            onRemoveProductImage={handleRemoveProductImage}
+          />
+        </Suspense>
         )}
     </div>
   );

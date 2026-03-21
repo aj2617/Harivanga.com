@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   getAuthErrorMessage,
   mapOrderRow,
@@ -10,10 +9,10 @@ import {
   supabase,
 } from '../supabase';
 import { canUseLocalOrderFallback, findLocalDevOrdersByPhone } from '../lib/localDevOrders';
+import { formatMediumDate } from '../lib/dates';
 import { formatCurrency } from '../lib/format';
 import { Order } from '../types';
 import { Search, Package, Clock, CheckCircle2, Truck, Phone, Mail, Lock, User as UserIcon, LogOut } from 'lucide-react';
-import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { hasSupabaseConfig } from '../lib/env';
 
@@ -35,57 +34,10 @@ export const Account: React.FC = () => {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   const normalizedPhone = useMemo(() => normalizePhoneNumber(phone), [phone]);
-
-  const ordersQuery = useQuery<Order[]>({
-    queryKey: ['account-orders', normalizedPhone, user?.id ?? null],
-    enabled: hasSearched && normalizedPhone.length > 0,
-    queryFn: async () => {
-      if (!normalizedPhone) {
-        return [];
-      }
-
-      if (!canUseLocalOrderFallback() && !user) {
-        throw new Error('Sign in with your email and password to view your orders in production.');
-      }
-
-      const localOrders = findLocalDevOrdersByPhone(phone);
-      const orderMap = new Map<string, Order>();
-      localOrders.forEach((order) => {
-        orderMap.set(order.id, order);
-      });
-
-      if (canUseLocalOrderFallback()) {
-        return Array.from(orderMap.values()).sort(
-          (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-        ).slice(0, 1);
-      }
-
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', user!.id)
-        .eq('customer_phone_normalized', normalizedPhone)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      (data ?? []).forEach((row) => {
-        const order = mapOrderRow(row);
-        orderMap.set(order.id, order);
-      });
-
-      return Array.from(orderMap.values()).sort(
-        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-      ).slice(0, 1);
-    },
-  });
-
-  const orders = ordersQuery.data ?? [];
-  const isSearching = ordersQuery.isFetching;
 
   const handleAuthSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -137,6 +89,7 @@ export const Account: React.FC = () => {
     setIsSigningOut(true);
     try {
       await signOutUser();
+      setOrders([]);
       setHasSearched(false);
       setSearchError(null);
       setAuthMessage('Signed out successfully.');
@@ -154,19 +107,57 @@ export const Account: React.FC = () => {
       return;
     }
 
+    if (!canUseLocalOrderFallback() && !user) {
+      setSearchError('Sign in with your email and password to view your orders in production.');
+      return;
+    }
+
     setSearchError(null);
     setHasSearched(true);
-    void ordersQuery.refetch().then((result) => {
-      if (result.error) {
-        const fallbackOrders = findLocalDevOrdersByPhone(phone);
-        if (fallbackOrders.length > 0) {
-          setSearchError(null);
-          return;
+    setIsSearching(true);
+
+    try {
+      const localOrders = findLocalDevOrdersByPhone(phone);
+      const orderMap = new Map<string, Order>();
+      localOrders.forEach((order) => {
+        orderMap.set(order.id, order);
+      });
+
+      if (!canUseLocalOrderFallback()) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', user!.id)
+          .eq('customer_phone_normalized', normalizedPhone)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          throw error;
         }
 
-        setSearchError(result.error.message || 'Could not check order status right now. Please try again.');
+        (data ?? []).forEach((row) => {
+          const order = mapOrderRow(row);
+          orderMap.set(order.id, order);
+        });
       }
-    });
+
+      const nextOrders = Array.from(orderMap.values()).sort(
+        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      ).slice(0, 1);
+
+      setOrders(nextOrders);
+    } catch (error) {
+      const fallbackOrders = findLocalDevOrdersByPhone(phone);
+      if (fallbackOrders.length > 0) {
+        setOrders(fallbackOrders.slice(0, 1));
+        setSearchError(null);
+      } else {
+        setOrders([]);
+        setSearchError(error instanceof Error ? error.message : 'Could not check order status right now. Please try again.');
+      }
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -369,7 +360,7 @@ export const Account: React.FC = () => {
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                         <div>
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Order ID: #{order.id.slice(-6).toUpperCase()}</p>
-                          <p className="text-sm text-gray-500">Placed on {format(new Date(order.createdAt), 'PPP')}</p>
+                          <p className="text-sm text-gray-500">Placed on {formatMediumDate(new Date(order.createdAt))}</p>
                         </div>
                         <div className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 ${
                           order.status === 'Delivered' ? 'bg-green-50 text-green-600' :

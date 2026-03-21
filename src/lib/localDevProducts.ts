@@ -1,4 +1,3 @@
-import { MOCK_PRODUCTS } from '../data/mockData';
 import { Product } from '../types';
 import { canUseDevelopmentFallbacks, isLocalDevelopmentHost } from './env';
 
@@ -15,20 +14,26 @@ export function isLocalDevAdminMode() {
   return window.localStorage.getItem(LOCAL_DEV_ADMIN_KEY) === 'true';
 }
 
-export function getLocalDevProducts() {
-  if (typeof window === 'undefined') return MOCK_PRODUCTS;
+export async function getMockProducts() {
+  const module = await import('../data/mockData');
+  return module.MOCK_PRODUCTS;
+}
+
+export async function getLocalDevProducts() {
+  const fallbackProducts = await getMockProducts();
+  if (typeof window === 'undefined') return fallbackProducts;
 
   const raw = window.localStorage.getItem(LOCAL_DEV_PRODUCTS_KEY);
   if (!raw) {
-    window.localStorage.setItem(LOCAL_DEV_PRODUCTS_KEY, JSON.stringify(MOCK_PRODUCTS));
-    return MOCK_PRODUCTS;
+    window.localStorage.setItem(LOCAL_DEV_PRODUCTS_KEY, JSON.stringify(fallbackProducts));
+    return fallbackProducts;
   }
 
   try {
     return JSON.parse(raw) as Product[];
   } catch {
-    window.localStorage.setItem(LOCAL_DEV_PRODUCTS_KEY, JSON.stringify(MOCK_PRODUCTS));
-    return MOCK_PRODUCTS;
+    window.localStorage.setItem(LOCAL_DEV_PRODUCTS_KEY, JSON.stringify(fallbackProducts));
+    return fallbackProducts;
   }
 }
 

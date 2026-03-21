@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 

@@ -3,6 +3,13 @@ import type { User } from '@supabase/supabase-js';
 import { hasSupabaseConfig } from '../lib/env';
 import { UserProfile } from '../types';
 
+function shouldHydrateProfile(pathname: string) {
+  return pathname.startsWith('/account')
+    || pathname.startsWith('/checkout')
+    || pathname.startsWith('/admin')
+    || pathname.startsWith('/order-confirmation');
+}
+
 function buildFallbackProfile(authUser: User, role: UserProfile['role']): UserProfile {
   const metadata = authUser.user_metadata ?? {};
   return {
@@ -60,8 +67,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         setUser(authUser);
         if (authUser) {
-          const { mapUserProfileRow, mapUserProfileToRow, supabase } = await loadSupabaseModule();
           const fallbackProfile = buildFallbackProfile(authUser, 'customer');
+          const pathname = typeof window === 'undefined' ? '/' : window.location.pathname;
+
+          if (!shouldHydrateProfile(pathname)) {
+            if (isMounted) {
+              setProfile(fallbackProfile);
+            }
+            return;
+          }
+
+          const { mapUserProfileRow, mapUserProfileToRow, supabase } = await loadSupabaseModule();
           const { data: existingProfileRow, error: profileError } = await supabase
             .from('users')
             .select('*')

@@ -1,58 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { mapOrderRow, supabase } from '../supabase';
-import { getLocalDevOrderById } from '../lib/localDevOrders';
 import { formatCurrency } from '../lib/format';
-import { getRecentOrderById } from '../lib/recentOrders';
-import { hasSupabaseConfig } from '../lib/env';
-import { Order } from '../types';
 import { CheckCircle, Package, Truck, MessageCircle, ArrowRight, Calendar, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useOrderLookup } from '../hooks/useOrderLookup';
 
 export const OrderConfirmation: React.FC = () => {
   const { orderId } = useParams();
   const { user, isAdmin } = useAuth();
-  const { data: order, isLoading: loading } = useQuery<Order | null>({
-    queryKey: ['order-confirmation', orderId, user?.id ?? null, isAdmin],
-    enabled: Boolean(orderId),
-    queryFn: async () => {
-      if (!orderId) {
-        return null;
-      }
-
-      const recentOrder = getRecentOrderById(orderId);
-      if (recentOrder) {
-        return recentOrder;
-      }
-
-      const localOrder = getLocalDevOrderById(orderId);
-      if (localOrder) {
-        return localOrder;
-      }
-
-      if ((!user && !isAdmin) || !hasSupabaseConfig) {
-        return null;
-      }
-
-      let query = supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId);
-
-      if (!isAdmin && user) {
-        query = query.eq('user_id', user.id);
-      }
-
-      const { data, error } = await query.maybeSingle();
-
-      if (error) {
-        throw error;
-      }
-
-      return data ? mapOrderRow(data) : null;
-    },
-  });
+  const { order, loading } = useOrderLookup({ orderId, userId: user?.id ?? null, isAdmin });
 
   if (loading) {
     return (

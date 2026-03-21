@@ -7,6 +7,7 @@ import { hasSupabaseConfig } from '../lib/env';
 import { canUseLocalOrderFallback, saveLocalDevOrder } from '../lib/localDevOrders';
 import { CheckCircle2, CreditCard, Truck, MapPin, Phone, User as UserIcon, Building2, LocateFixed } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
+import { getThumbnailImageSrc } from '../lib/imageSources';
 import { saveRecentOrder } from '../lib/recentOrders';
 
 const DISTRICTS_BY_DIVISION: Record<string, string[]> = {
@@ -383,7 +384,7 @@ export const Checkout: React.FC = () => {
                   <div key={`${item.productId}-${item.variant}`} className="flex justify-between items-center text-sm">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50">
-                        <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
+                        <img src={getThumbnailImageSrc(item.image)} alt={item.productName} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       </div>
                       <div>
                         <p className="font-bold text-mango-dark">{item.productName}</p>
