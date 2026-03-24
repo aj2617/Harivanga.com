@@ -103,7 +103,7 @@ const DEFAULT_SETTINGS: AdminSettings = {
   storeName: 'Harivanga.com',
   logoUrl: '',
   website: 'https://harivanga.com',
-  supportPhone: '+880 1307-367441',
+  supportPhone: '01342262821',
   supportEmail: 'support@harivanga.com',
   address: 'Dhaka, Bangladesh',
   deliveryZoneEntries: [

@@ -104,7 +104,7 @@ export const OrderConfirmation: React.FC = () => {
                   </div>
                 </div>
                 <a
-                  href={`https://wa.me/8801307367441?text=I have a question about my order #${order.id}`}
+                  href={`https://wa.me/8801342262821?text=I have a question about my order #${order.id}`}
                   target="_blank"
                   rel="noreferrer"
                   className="bg-[#25D366] text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-[#25D366]/90 transition-all shadow-lg shadow-green-500/20"

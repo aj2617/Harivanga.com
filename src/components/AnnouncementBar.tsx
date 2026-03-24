@@ -8,13 +8,13 @@ export const AnnouncementBar: React.FC = () => {
         <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-white/80">
             <a
-              href="https://wa.me/8801307367441"
+              href="https://wa.me/8801342262821"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 hover:text-white transition-colors"
             >
               <MessageCircle size={14} />
-              Phone: +880 1307-367441
+              Phone: 01342262821
             </a>
             <span className="hidden sm:inline text-white/30">|</span>
             <span className="inline-flex items-center gap-2">

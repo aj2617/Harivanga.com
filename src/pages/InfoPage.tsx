@@ -44,7 +44,7 @@ const INFO_PAGE_CONTENT: Record<string, InfoPageContent> = {
     eyebrow: 'Support',
     title: 'Contact Us',
     intro: 'Reach Harivanga.com for order updates, delivery coordination, or wholesale questions.',
-    highlights: ['WhatsApp for Orders: +880 1307-367441', 'Email: hello@harivanga.com', 'Facebook: Jimbabu123'],
+    highlights: ['WhatsApp for Orders: 01342262821', 'Email: hello@harivanga.com', 'Facebook: Jimbabu123'],
     sections: [
       {
         heading: 'Response time',

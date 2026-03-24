@@ -16,7 +16,7 @@ const WhatsAppGlyph: React.FC = () => (
 
 export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({ message = DEFAULT_MESSAGE }) => {
   const { pathname } = useLocation();
-  const href = `https://wa.me/8801307367441?text=${encodeURIComponent(message)}`;
+  const href = `https://wa.me/8801342262821?text=${encodeURIComponent(message)}`;
 
   if (pathname.startsWith('/admin')) {
     return null;

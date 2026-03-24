@@ -155,7 +155,7 @@ export const ProductDetail: React.FC = () => {
 
   const handleWhatsAppOrder = () => {
     const message = `Hello! I'd like to order ${quantity} x ${product.name} (${selectedVariant?.weight}). Total: ${formatCurrency(totalPrice)}`;
-    window.open(`https://wa.me/8801307367441?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/8801342262821?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (
