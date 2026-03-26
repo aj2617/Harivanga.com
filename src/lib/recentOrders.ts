@@ -5,7 +5,7 @@ const RECENT_ORDERS_KEY = 'harivanga_recent_orders';
 function normalizeOrder(order: Order): Order {
   return {
     ...order,
-    paymentStatus: order.paymentStatus ?? (order.paymentMethod === 'Cash on Delivery' ? 'Not Required' : 'Awaiting Verification'),
+    paymentStatus: order.paymentStatus ?? 'Awaiting Verification',
     paymentConfirmationAmount: order.paymentConfirmationAmount ?? 0,
   };
 }
