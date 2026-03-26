@@ -50,6 +50,58 @@ create table if not exists public.orders (
   user_id uuid references auth.users (id) on delete set null
 );
 
+create or replace function public.handle_auth_user_created()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, name, phone, email, role, saved_addresses)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', ''),
+    new.phone,
+    new.email,
+    'customer',
+    '{}'
+  )
+  on conflict (id) do update
+  set
+    name = case
+      when public.users.name = '' then excluded.name
+      else public.users.name
+    end,
+    phone = coalesce(public.users.phone, excluded.phone),
+    email = coalesce(public.users.email, excluded.email);
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_auth_user_created();
+
+insert into public.users (id, name, phone, email, role, saved_addresses)
+select
+  auth_user.id,
+  coalesce(auth_user.raw_user_meta_data ->> 'full_name', auth_user.raw_user_meta_data ->> 'name', ''),
+  auth_user.phone,
+  auth_user.email,
+  'customer',
+  '{}'
+from auth.users as auth_user
+on conflict (id) do update
+set
+  name = case
+    when public.users.name = '' then excluded.name
+    else public.users.name
+  end,
+  phone = coalesce(public.users.phone, excluded.phone),
+  email = coalesce(public.users.email, excluded.email);
+
 alter table public.orders add column if not exists payment_status text not null default 'Not Required';
 alter table public.orders add column if not exists payment_sender_phone text;
 alter table public.orders add column if not exists payment_transaction_id text;
@@ -170,6 +222,20 @@ as $$
 $$;
 
 grant execute on function public.track_orders_by_phone(text) to anon, authenticated;
+
+create or replace function public.track_order_by_id(p_order_id uuid)
+returns public.orders
+language sql
+security definer
+set search_path = public
+as $$
+  select orders.*
+  from public.orders
+  where orders.id = p_order_id
+  limit 1;
+$$;
+
+grant execute on function public.track_order_by_id(uuid) to anon, authenticated;
 
 create index if not exists orders_customer_phone_idx on public.orders (customer_phone);
 create index if not exists orders_customer_phone_normalized_idx on public.orders (customer_phone_normalized);

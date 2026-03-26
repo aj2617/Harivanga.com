@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { mapOrderRow, ORDER_SELECT, supabase } from '../supabase';
 import { getLocalDevOrderById } from '../lib/localDevOrders';
-import { getRecentOrderById } from '../lib/recentOrders';
+import { getRecentOrderById, saveRecentOrder } from '../lib/recentOrders';
 import { hasSupabaseConfig } from '../lib/env';
 import { Order } from '../types';
 
@@ -17,24 +17,25 @@ export function useOrderLookup({ orderId, userId, isAdmin = false }: UseOrderLoo
 
   useEffect(() => {
     let cancelled = false;
+    let refreshTimer: number | null = null;
 
-    async function loadOrder() {
+    async function loadOrder(showLoader = true) {
       if (!orderId) {
         setOrder(null);
         setLoading(false);
         return;
       }
 
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
 
       try {
         const recentOrder = getRecentOrderById(orderId);
         if (recentOrder) {
           if (!cancelled) {
             setOrder(recentOrder);
-            setLoading(false);
           }
-          return;
         }
 
         const localOrder = getLocalDevOrderById(orderId);
@@ -46,7 +47,7 @@ export function useOrderLookup({ orderId, userId, isAdmin = false }: UseOrderLoo
           return;
         }
 
-        if ((!userId && !isAdmin) || !hasSupabaseConfig) {
+        if (!hasSupabaseConfig) {
           if (!cancelled) {
             setOrder(null);
             setLoading(false);
@@ -54,28 +55,44 @@ export function useOrderLookup({ orderId, userId, isAdmin = false }: UseOrderLoo
           return;
         }
 
-        let query = supabase
-          .from('orders')
-          .select(ORDER_SELECT)
-          .eq('id', orderId);
+        let data: unknown = null;
+        let error: Error | null = null;
 
-        if (!isAdmin && userId) {
-          query = query.eq('user_id', userId);
+        if (isAdmin || userId) {
+          let query = supabase
+            .from('orders')
+            .select(ORDER_SELECT)
+            .eq('id', orderId);
+
+          if (!isAdmin && userId) {
+            query = query.eq('user_id', userId);
+          }
+
+          const result = await query.maybeSingle();
+          data = result.data;
+          error = result.error;
+        } else {
+          const result = await supabase.rpc('track_order_by_id', { p_order_id: orderId });
+          data = result.data;
+          error = result.error;
         }
-
-        const { data, error } = await query.maybeSingle();
 
         if (error) {
           throw error;
         }
 
+        const mappedOrder = data ? mapOrderRow(data as never) : null;
         if (!cancelled) {
-          setOrder(data ? mapOrderRow(data) : null);
+          setOrder(mappedOrder);
+        }
+
+        if (mappedOrder) {
+          saveRecentOrder(mappedOrder);
         }
       } catch (error) {
         console.error('Failed to load order', error);
         if (!cancelled) {
-          setOrder(null);
+          setOrder((current) => current);
         }
       } finally {
         if (!cancelled) {
@@ -85,9 +102,17 @@ export function useOrderLookup({ orderId, userId, isAdmin = false }: UseOrderLoo
     }
 
     void loadOrder();
+    if (typeof window !== 'undefined') {
+      refreshTimer = window.setInterval(() => {
+        void loadOrder(false);
+      }, 15000);
+    }
 
     return () => {
       cancelled = true;
+      if (refreshTimer !== null) {
+        window.clearInterval(refreshTimer);
+      }
     };
   }, [isAdmin, orderId, userId]);
 

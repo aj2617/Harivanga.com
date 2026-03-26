@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mapOrderRow, supabase } from '../supabase';
 import { canUseLocalOrderFallback, findLocalDevOrdersByPhone } from '../lib/localDevOrders';
+import { saveRecentOrder } from '../lib/recentOrders';
 import { formatMediumDate } from '../lib/dates';
 import { formatCurrency } from '../lib/format';
 import { Order, PaymentStatus } from '../types';
@@ -26,8 +27,7 @@ export const Account: React.FC = () => {
   const navigate = useNavigate();
   const normalizedPhone = useMemo(() => normalizePhoneNumber(phone), [phone]);
 
-  const handleTrackOrders = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loadOrdersByPhone = async () => {
     if (!normalizedPhone) {
       setSearchError('Enter the phone number used for the order.');
       return;
@@ -75,6 +75,23 @@ export const Account: React.FC = () => {
       setIsSearching(false);
     }
   };
+
+  const handleTrackOrders = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await loadOrdersByPhone();
+  };
+
+  useEffect(() => {
+    if (!hasSearched || !normalizedPhone) {
+      return;
+    }
+
+    const refreshTimer = window.setInterval(() => {
+      void loadOrdersByPhone();
+    }, 15000);
+
+    return () => window.clearInterval(refreshTimer);
+  }, [hasSearched, normalizedPhone]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -183,7 +200,10 @@ export const Account: React.FC = () => {
                         </div>
                         <div className="flex gap-3 w-full md:w-auto">
                           <button
-                            onClick={() => navigate(`/order-confirmation/${order.id}`)}
+                            onClick={() => {
+                              saveRecentOrder(order);
+                              navigate(`/order-confirmation/${order.id}`);
+                            }}
                             className="flex-grow md:flex-grow-0 px-6 py-3 bg-gray-100 text-mango-dark rounded-xl font-bold text-sm hover:bg-gray-200 transition-all"
                           >
                             View Details

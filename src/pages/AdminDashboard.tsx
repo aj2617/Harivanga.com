@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { handleDatabaseError, mapOrderRow, mapProductRow, mapProductToRow, OperationType, supabase } from '../supabase';
+import { handleDatabaseError, mapOrderRow, mapProductRow, mapProductToRow, OperationType, ORDER_SELECT, supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { Product, Order, OrderStatus, PaymentStatus } from '../types';
 import { getLocalDevProducts, getMockProducts, isLocalDevAdminMode, isLocalDevHost, LOCAL_DEV_ADMIN_KEY, setLocalDevProducts } from '../lib/localDevProducts';
@@ -245,7 +245,7 @@ export const AdminDashboard: React.FC = () => {
 
     const { data, error } = await supabase
       .from('orders')
-      .select('id,customer_name,customer_phone,delivery_area,total,status,created_at')
+      .select(ORDER_SELECT)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -478,14 +478,27 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
+    const previousOrders = orders;
+    const previousOverviewOrders = overviewOrders;
+    setOrders((current) => current.map((order) => (order.id === orderId ? { ...order, status } : order)));
+    setOverviewOrders((current) => current.map((order) => (order.id === orderId ? { ...order, status } : order)));
+
     try {
-      const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
-      if (error) {
-        throw error;
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId)
+        .select('id')
+        .maybeSingle();
+      if (error || !data) {
+        throw error ?? new Error('Order status update was not applied.');
       }
       await Promise.all([loadOverviewData(), loadOrdersPage()]);
     } catch (error) {
-      handleDatabaseError(error, OperationType.UPDATE, 'orders');
+      setOrders(previousOrders);
+      setOverviewOrders(previousOverviewOrders);
+      console.error('Failed to update order status', error);
+      setErrorMessage('Could not update order status. Confirm this account has admin role in Supabase and try again.');
     }
   };
 
@@ -587,14 +600,27 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
+    const previousOrders = orders;
+    const previousOverviewOrders = overviewOrders;
+    setOrders((current) => current.map((order) => (order.id === orderId ? { ...order, paymentStatus } : order)));
+    setOverviewOrders((current) => current.map((order) => (order.id === orderId ? { ...order, paymentStatus } : order)));
+
     try {
-      const { error } = await supabase.from('orders').update({ payment_status: paymentStatus }).eq('id', orderId);
-      if (error) {
-        throw error;
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ payment_status: paymentStatus })
+        .eq('id', orderId)
+        .select('id')
+        .maybeSingle();
+      if (error || !data) {
+        throw error ?? new Error('Payment status update was not applied.');
       }
       await Promise.all([loadOverviewData(), loadOrdersPage()]);
     } catch (error) {
-      handleDatabaseError(error, OperationType.UPDATE, 'orders');
+      setOrders(previousOrders);
+      setOverviewOrders(previousOverviewOrders);
+      console.error('Failed to update payment status', error);
+      setErrorMessage('Could not update payment status. Confirm this account has admin role in Supabase and try again.');
     }
   };
 
