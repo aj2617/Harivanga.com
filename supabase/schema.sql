@@ -54,6 +54,7 @@ alter table public.orders add column if not exists payment_status text not null 
 alter table public.orders add column if not exists payment_sender_phone text;
 alter table public.orders add column if not exists payment_transaction_id text;
 alter table public.orders add column if not exists payment_confirmation_amount numeric not null default 0;
+alter table public.orders alter column payment_status set default 'Not Required';
 
 alter table public.orders drop constraint if exists orders_payment_status_check;
 alter table public.orders
