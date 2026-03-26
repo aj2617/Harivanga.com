@@ -28,6 +28,7 @@ export interface OrderItem {
 
 export type OrderStatus = 'Pending' | 'Confirmed' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
 export type PaymentStatus = 'Not Required' | 'Awaiting Verification' | 'Received' | 'Rejected';
+export type OrderPaymentMethod = 'bKash' | 'Nagad' | 'Rocket' | 'Cash on Delivery';
 
 export interface Order {
   id: string;
@@ -41,7 +42,7 @@ export interface Order {
   deliveryLocation?: string;
   deliveryMethod?: 'Home Delivery' | 'Courier Pickup';
   deliveryDate: string;
-  paymentMethod: 'bKash' | 'Nagad' | 'Cash on Delivery';
+  paymentMethod: OrderPaymentMethod;
   paymentStatus: PaymentStatus;
   paymentSenderPhone?: string;
   paymentTransactionId?: string;

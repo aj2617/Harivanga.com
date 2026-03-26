@@ -47,7 +47,7 @@ create table if not exists public.orders (
   delivery_location text,
   delivery_method text check (delivery_method in ('Home Delivery', 'Courier Pickup')),
   delivery_date date not null,
-  payment_method text not null check (payment_method in ('bKash', 'Nagad', 'Cash on Delivery')),
+  payment_method text not null check (payment_method in ('bKash', 'Nagad', 'Rocket', 'Cash on Delivery')),
   payment_status text not null default 'Not Required' check (payment_status in ('Not Required', 'Awaiting Verification', 'Received', 'Rejected')),
   payment_sender_phone text,
   payment_transaction_id text,

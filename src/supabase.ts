@@ -1,5 +1,5 @@
 import { createClient, type User } from '@supabase/supabase-js';
-import { Order, OrderStatus, Product, ProductVariant, UserProfile } from './types';
+import { Order, OrderPaymentMethod, OrderStatus, Product, ProductVariant, UserProfile } from './types';
 import { hasSupabaseConfig } from './lib/env';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://example.supabase.co';
@@ -178,7 +178,7 @@ type OrderRow = {
   delivery_location: string | null;
   delivery_method: 'Home Delivery' | 'Courier Pickup' | null;
   delivery_date: string;
-  payment_method: 'bKash' | 'Nagad' | 'Cash on Delivery';
+  payment_method: OrderPaymentMethod;
   payment_status?: 'Not Required' | 'Awaiting Verification' | 'Received' | 'Rejected' | null;
   payment_sender_phone?: string | null;
   payment_transaction_id?: string | null;
