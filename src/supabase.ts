@@ -248,7 +248,7 @@ export function mapOrderRow(row: OrderRow): Order {
     deliveryMethod: row.delivery_method ?? undefined,
     deliveryDate: row.delivery_date,
     paymentMethod: row.payment_method,
-    paymentStatus: row.payment_status ?? 'Awaiting Verification',
+    paymentStatus: row.payment_status ?? (row.payment_method === 'Cash on Delivery' ? 'Not Required' : 'Awaiting Verification'),
     paymentSenderPhone: row.payment_sender_phone ?? undefined,
     paymentTransactionId: row.payment_transaction_id ?? undefined,
     paymentConfirmationAmount: row.payment_confirmation_amount ?? undefined,
