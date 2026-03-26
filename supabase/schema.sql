@@ -24,6 +24,17 @@ create table if not exists public.products (
   variants jsonb not null default '[]'::jsonb
 );
 
+alter table public.products add column if not exists description text not null default '';
+alter table public.products add column if not exists image text not null default '';
+alter table public.products add column if not exists images text[];
+alter table public.products add column if not exists price_per_kg numeric not null default 0;
+alter table public.products add column if not exists stock integer not null default 0;
+alter table public.products add column if not exists variety text not null default '';
+alter table public.products add column if not exists origin text not null default '';
+alter table public.products add column if not exists taste_profile text not null default '';
+alter table public.products add column if not exists is_available boolean not null default true;
+alter table public.products add column if not exists variants jsonb not null default '[]'::jsonb;
+
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   customer_name text not null,
@@ -49,6 +60,19 @@ create table if not exists public.orders (
   created_at timestamptz not null default timezone('utc', now()),
   user_id uuid references auth.users (id) on delete set null
 );
+
+alter table public.orders add column if not exists customer_phone_normalized text;
+alter table public.orders add column if not exists delivery_division text;
+alter table public.orders add column if not exists delivery_district text;
+alter table public.orders add column if not exists delivery_location text;
+alter table public.orders add column if not exists delivery_method text;
+alter table public.orders add column if not exists delivery_date date;
+alter table public.orders add column if not exists user_id uuid references auth.users (id) on delete set null;
+
+alter table public.orders drop constraint if exists orders_delivery_method_check;
+alter table public.orders
+  add constraint orders_delivery_method_check
+  check (delivery_method in ('Home Delivery', 'Courier Pickup') or delivery_method is null);
 
 create or replace function public.handle_auth_user_created()
 returns trigger
@@ -236,6 +260,115 @@ as $$
 $$;
 
 grant execute on function public.track_order_by_id(uuid) to anon, authenticated;
+
+create or replace function public.create_public_order(
+  p_customer_name text,
+  p_customer_phone text,
+  p_customer_phone_normalized text,
+  p_delivery_address text,
+  p_delivery_area text,
+  p_delivery_division text,
+  p_delivery_district text,
+  p_delivery_location text,
+  p_delivery_method text,
+  p_delivery_date date,
+  p_payment_method text,
+  p_payment_status text,
+  p_payment_sender_phone text,
+  p_payment_transaction_id text,
+  p_payment_confirmation_amount numeric,
+  p_items jsonb,
+  p_subtotal numeric,
+  p_delivery_charge numeric,
+  p_total numeric,
+  p_status text,
+  p_created_at timestamptz
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_order_id uuid;
+begin
+  insert into public.orders (
+    customer_name,
+    customer_phone,
+    customer_phone_normalized,
+    delivery_address,
+    delivery_area,
+    delivery_division,
+    delivery_district,
+    delivery_location,
+    delivery_method,
+    delivery_date,
+    payment_method,
+    payment_status,
+    payment_sender_phone,
+    payment_transaction_id,
+    payment_confirmation_amount,
+    items,
+    subtotal,
+    delivery_charge,
+    total,
+    status,
+    created_at,
+    user_id
+  )
+  values (
+    p_customer_name,
+    p_customer_phone,
+    p_customer_phone_normalized,
+    p_delivery_address,
+    p_delivery_area,
+    p_delivery_division,
+    p_delivery_district,
+    p_delivery_location,
+    p_delivery_method,
+    p_delivery_date,
+    p_payment_method,
+    p_payment_status,
+    p_payment_sender_phone,
+    p_payment_transaction_id,
+    coalesce(p_payment_confirmation_amount, 0),
+    coalesce(p_items, '[]'::jsonb),
+    coalesce(p_subtotal, 0),
+    coalesce(p_delivery_charge, 0),
+    coalesce(p_total, 0),
+    coalesce(p_status, 'Pending'),
+    coalesce(p_created_at, timezone('utc', now())),
+    null
+  )
+  returning id into new_order_id;
+
+  return new_order_id;
+end;
+$$;
+
+grant execute on function public.create_public_order(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  date,
+  text,
+  text,
+  text,
+  text,
+  numeric,
+  jsonb,
+  numeric,
+  numeric,
+  numeric,
+  text,
+  timestamptz
+) to anon, authenticated;
 
 create index if not exists orders_customer_phone_idx on public.orders (customer_phone);
 create index if not exists orders_customer_phone_normalized_idx on public.orders (customer_phone_normalized);

@@ -165,30 +165,66 @@ export const Checkout: React.FC = () => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('orders')
-        .insert(
-          mapOrderToRow({
-            userId: user?.id,
-            ...orderBase,
-          })
-        )
-        .select('id')
-        .single();
+      const orderRow = mapOrderToRow({
+        userId: user?.id,
+        ...orderBase,
+      });
 
-      if (error) {
-        throw error;
+      let createdOrderId: string | null = null;
+
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('orders')
+          .insert(orderRow)
+          .select('id')
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        createdOrderId = data.id;
+      } else {
+        const { data, error } = await supabase.rpc('create_public_order', {
+          p_customer_name: orderRow.customer_name,
+          p_customer_phone: orderRow.customer_phone,
+          p_customer_phone_normalized: orderRow.customer_phone_normalized,
+          p_delivery_address: orderRow.delivery_address,
+          p_delivery_area: orderRow.delivery_area,
+          p_delivery_division: orderRow.delivery_division,
+          p_delivery_district: orderRow.delivery_district,
+          p_delivery_location: orderRow.delivery_location,
+          p_delivery_method: orderRow.delivery_method,
+          p_delivery_date: orderRow.delivery_date,
+          p_payment_method: orderRow.payment_method,
+          p_payment_status: orderRow.payment_status,
+          p_payment_sender_phone: orderRow.payment_sender_phone,
+          p_payment_transaction_id: orderRow.payment_transaction_id,
+          p_payment_confirmation_amount: orderRow.payment_confirmation_amount,
+          p_items: orderRow.items,
+          p_subtotal: orderRow.subtotal,
+          p_delivery_charge: orderRow.delivery_charge,
+          p_total: orderRow.total,
+          p_status: orderRow.status,
+          p_created_at: orderRow.created_at,
+        });
+
+        if (error || !data) {
+          throw error ?? new Error('Could not create order.');
+        }
+
+        createdOrderId = data;
       }
 
       const savedOrder = {
-        id: data.id,
+        id: createdOrderId,
         userId: user?.id,
         ...orderBase,
       };
 
       clearCart();
       saveRecentOrder(savedOrder);
-      navigate(`/order-confirmation/${data.id}`);
+      navigate(`/order-confirmation/${createdOrderId}`);
     } catch (error) {
       if (canUseLocalOrderFallback()) {
         const localFallbackOrderId = `local-order-${Date.now()}`;
