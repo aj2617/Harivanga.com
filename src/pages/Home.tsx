@@ -116,7 +116,7 @@ export const Home: React.FC = () => {
         <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,250,241,0.96),rgba(255,255,255,0.88))]" />
         <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-4 pb-14 pt-16 sm:px-6 sm:pb-16 sm:pt-20 lg:grid-cols-[minmax(0,1.02fr)_minmax(430px,0.98fr)] lg:gap-14 lg:px-8 lg:pb-20 lg:pt-24">
           <div className="max-w-3xl">
-            <span className="mb-6 inline-block rounded-full bg-[#77ef77] px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-[#155724] sm:text-sm">
+            <span className="mb-6 inline-block rounded-full bg-mango-orange px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white sm:text-sm">
               Season 2026 Is Here
             </span>
             <h1 className="max-w-4xl text-[3.05rem] font-black leading-[0.92] tracking-tight text-[#8f4b00] sm:text-6xl lg:text-7xl xl:text-[5.2rem]">

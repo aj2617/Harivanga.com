@@ -27,6 +27,7 @@ export interface OrderItem {
 }
 
 export type OrderStatus = 'Pending' | 'Confirmed' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+export type PaymentStatus = 'Not Required' | 'Awaiting Verification' | 'Received' | 'Rejected';
 
 export interface Order {
   id: string;
@@ -41,6 +42,10 @@ export interface Order {
   deliveryMethod?: 'Home Delivery' | 'Courier Pickup';
   deliveryDate: string;
   paymentMethod: 'bKash' | 'Nagad' | 'Cash on Delivery';
+  paymentStatus: PaymentStatus;
+  paymentSenderPhone?: string;
+  paymentTransactionId?: string;
+  paymentConfirmationAmount?: number;
   items: OrderItem[];
   subtotal: number;
   deliveryCharge: number;

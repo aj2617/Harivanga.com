@@ -21,7 +21,7 @@ export const auth = supabase.auth;
 
 export const USER_PROFILE_SELECT = 'id,name,phone,email,role,saved_addresses';
 export const ORDER_SELECT =
-  'id,customer_name,customer_phone,customer_phone_normalized,delivery_address,delivery_area,delivery_division,delivery_district,delivery_location,delivery_method,delivery_date,payment_method,items,subtotal,delivery_charge,total,status,created_at,user_id';
+  'id,customer_name,customer_phone,customer_phone_normalized,delivery_address,delivery_area,delivery_division,delivery_district,delivery_location,delivery_method,delivery_date,payment_method,payment_status,payment_sender_phone,payment_transaction_id,payment_confirmation_amount,items,subtotal,delivery_charge,total,status,created_at,user_id';
 
 export enum OperationType {
   CREATE = 'create',
@@ -179,6 +179,10 @@ type OrderRow = {
   delivery_method: 'Home Delivery' | 'Courier Pickup' | null;
   delivery_date: string;
   payment_method: 'bKash' | 'Nagad' | 'Cash on Delivery';
+  payment_status?: 'Not Required' | 'Awaiting Verification' | 'Received' | 'Rejected' | null;
+  payment_sender_phone?: string | null;
+  payment_transaction_id?: string | null;
+  payment_confirmation_amount?: number | null;
   items: OrderItemRow[];
   subtotal: number;
   delivery_charge: number;
@@ -244,6 +248,10 @@ export function mapOrderRow(row: OrderRow): Order {
     deliveryMethod: row.delivery_method ?? undefined,
     deliveryDate: row.delivery_date,
     paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status ?? (row.payment_method === 'Cash on Delivery' ? 'Not Required' : 'Awaiting Verification'),
+    paymentSenderPhone: row.payment_sender_phone ?? undefined,
+    paymentTransactionId: row.payment_transaction_id ?? undefined,
+    paymentConfirmationAmount: row.payment_confirmation_amount ?? undefined,
     items: row.items,
     subtotal: row.subtotal,
     deliveryCharge: row.delivery_charge,
@@ -267,6 +275,10 @@ export function mapOrderToRow(order: Omit<Order, 'id'>) {
     delivery_method: order.deliveryMethod ?? null,
     delivery_date: order.deliveryDate,
     payment_method: order.paymentMethod,
+    payment_status: order.paymentStatus,
+    payment_sender_phone: order.paymentSenderPhone ?? null,
+    payment_transaction_id: order.paymentTransactionId ?? null,
+    payment_confirmation_amount: order.paymentConfirmationAmount ?? null,
     items: order.items,
     subtotal: order.subtotal,
     delivery_charge: order.deliveryCharge,

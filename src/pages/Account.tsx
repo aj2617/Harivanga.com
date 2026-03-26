@@ -12,13 +12,20 @@ import {
 import { canUseLocalOrderFallback, findLocalDevOrdersByPhone } from '../lib/localDevOrders';
 import { formatMediumDate } from '../lib/dates';
 import { formatCurrency } from '../lib/format';
-import { Order } from '../types';
+import { Order, PaymentStatus } from '../types';
 import { Search, Package, Clock, CheckCircle2, Truck, Phone, Mail, Lock, User as UserIcon, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { hasSupabaseConfig } from '../lib/env';
 
 const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, '');
 type AuthMode = 'signin' | 'signup';
+
+const getPaymentStatusClasses = (paymentStatus: PaymentStatus) => {
+  if (paymentStatus === 'Received') return 'bg-green-50 text-green-600';
+  if (paymentStatus === 'Rejected') return 'bg-red-50 text-red-500';
+  if (paymentStatus === 'Awaiting Verification') return 'bg-amber-50 text-amber-600';
+  return 'bg-gray-50 text-gray-500';
+};
 
 export const Account: React.FC = () => {
   const { user, profile } = useAuth();
@@ -364,17 +371,22 @@ export const Account: React.FC = () => {
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Order ID: #{order.id.slice(-6).toUpperCase()}</p>
                           <p className="text-sm text-gray-500">Placed on {formatMediumDate(new Date(order.createdAt))}</p>
                         </div>
-                        <div className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 ${
-                          order.status === 'Delivered' ? 'bg-green-50 text-green-600' :
-                          order.status === 'Out for Delivery' ? 'bg-blue-50 text-blue-600' :
-                          order.status === 'Confirmed' ? 'bg-mango-yellow/10 text-mango-yellow' :
-                          'bg-gray-50 text-gray-500'
-                        }`}>
-                          {order.status === 'Delivered' ? <CheckCircle2 size={14} /> :
-                           order.status === 'Out for Delivery' ? <Truck size={14} /> :
-                           order.status === 'Confirmed' ? <CheckCircle2 size={14} /> :
-                           <Clock size={14} />}
-                          {order.status}
+                        <div className="flex flex-wrap gap-2">
+                          <div className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 ${
+                            order.status === 'Delivered' ? 'bg-green-50 text-green-600' :
+                            order.status === 'Out for Delivery' ? 'bg-blue-50 text-blue-600' :
+                            order.status === 'Confirmed' ? 'bg-mango-yellow/10 text-mango-yellow' :
+                            'bg-gray-50 text-gray-500'
+                          }`}>
+                            {order.status === 'Delivered' ? <CheckCircle2 size={14} /> :
+                             order.status === 'Out for Delivery' ? <Truck size={14} /> :
+                             order.status === 'Confirmed' ? <CheckCircle2 size={14} /> :
+                             <Clock size={14} />}
+                            {order.status}
+                          </div>
+                          <div className={`px-4 py-2 rounded-full text-xs font-bold ${getPaymentStatusClasses(order.paymentStatus)}`}>
+                            Payment: {order.paymentStatus}
+                          </div>
                         </div>
                       </div>
 
@@ -397,6 +409,10 @@ export const Account: React.FC = () => {
                           <div>
                             <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Payment</p>
                             <p className="font-bold text-sm text-gray-600">{order.paymentMethod}</p>
+                            <p className="mt-1 text-xs text-gray-500">Status: {order.paymentStatus}</p>
+                            {order.paymentMethod !== 'Cash on Delivery' && order.paymentTransactionId && (
+                              <p className="mt-1 text-xs text-gray-500">Txn ID: {order.paymentTransactionId}</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-3 w-full md:w-auto">

@@ -37,6 +37,10 @@ create table if not exists public.orders (
   delivery_method text check (delivery_method in ('Home Delivery', 'Courier Pickup')),
   delivery_date date not null,
   payment_method text not null check (payment_method in ('bKash', 'Nagad', 'Cash on Delivery')),
+  payment_status text not null default 'Not Required' check (payment_status in ('Not Required', 'Awaiting Verification', 'Received', 'Rejected')),
+  payment_sender_phone text,
+  payment_transaction_id text,
+  payment_confirmation_amount numeric not null default 0,
   items jsonb not null default '[]'::jsonb,
   subtotal numeric not null default 0,
   delivery_charge numeric not null default 0,
@@ -45,6 +49,16 @@ create table if not exists public.orders (
   created_at timestamptz not null default timezone('utc', now()),
   user_id uuid references auth.users (id) on delete set null
 );
+
+alter table public.orders add column if not exists payment_status text not null default 'Not Required';
+alter table public.orders add column if not exists payment_sender_phone text;
+alter table public.orders add column if not exists payment_transaction_id text;
+alter table public.orders add column if not exists payment_confirmation_amount numeric not null default 0;
+
+alter table public.orders drop constraint if exists orders_payment_status_check;
+alter table public.orders
+  add constraint orders_payment_status_check
+  check (payment_status in ('Not Required', 'Awaiting Verification', 'Received', 'Rejected'));
 
 alter table public.users enable row level security;
 alter table public.products enable row level security;

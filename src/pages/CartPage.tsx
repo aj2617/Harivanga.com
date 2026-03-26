@@ -2,13 +2,15 @@ import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Minus, Plus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { calculateDeliveryCharge, getCartTotalWeightKg } from '../lib/delivery';
 import { formatCurrency } from '../lib/format';
 import { getThumbnailImageSrc } from '../lib/imageSources';
 
 export const CartPage: React.FC = () => {
   const { cart, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
   const navigate = useNavigate();
-  const deliveryCharge = 60; // Flat rate for Dhaka
+  const totalWeightKg = getCartTotalWeightKg(cart);
+  const deliveryCharge = calculateDeliveryCharge(cart, 'Home Delivery');
 
   if (cart.length === 0) {
     return (
@@ -93,7 +95,7 @@ export const CartPage: React.FC = () => {
                   <span className="font-bold text-mango-dark">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-gray-500">
-                  <span>Delivery Charge</span>
+                  <span>Home Delivery Estimate ({totalWeightKg}kg)</span>
                   <span className="font-bold text-mango-dark">{formatCurrency(deliveryCharge)}</span>
                 </div>
                 <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
@@ -123,7 +125,7 @@ export const CartPage: React.FC = () => {
                   <ShoppingBag size={16} />
                 </div>
                 <p className="text-[10px] text-green-800 leading-relaxed">
-                  Your order is eligible for <span className="font-bold">Same Day Delivery</span> in Dhaka if placed before 12:00 PM.
+                  Delivery is calculated by weight. Home Delivery is charged per kg here, and Courier Pickup pricing is applied at checkout if selected.
                 </p>
               </div>
             </div>

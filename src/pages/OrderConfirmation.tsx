@@ -92,6 +92,32 @@ export const OrderConfirmation: React.FC = () => {
               </div>
             </div>
 
+            <div className="mb-12 rounded-3xl border border-gray-100 bg-gray-50/80 p-6">
+              <h3 className="text-lg font-bold text-mango-dark">Payment Details</h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl bg-white px-4 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Payment Method</p>
+                  <p className="mt-2 font-bold text-mango-dark">{order.paymentMethod}</p>
+                </div>
+                <div className="rounded-2xl bg-white px-4 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Payment Status</p>
+                  <p className="mt-2 font-bold text-mango-dark">{order.paymentStatus}</p>
+                </div>
+                {order.paymentMethod !== 'Cash on Delivery' && (
+                  <>
+                    <div className="rounded-2xl bg-white px-4 py-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Sender Phone</p>
+                      <p className="mt-2 font-bold text-mango-dark">{order.paymentSenderPhone || 'Not submitted'}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-4 py-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Transaction ID</p>
+                      <p className="mt-2 font-bold text-mango-dark">{order.paymentTransactionId || 'Not submitted'}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
             <div className="bg-mango-yellow/5 rounded-3xl p-8 border border-mango-yellow/10 mb-12">
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-4">

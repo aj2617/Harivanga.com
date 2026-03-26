@@ -8,6 +8,14 @@ export function canUseLocalOrderFallback() {
   return canUseDevelopmentFallbacks();
 }
 
+function normalizeOrder(order: Order): Order {
+  return {
+    ...order,
+    paymentStatus: order.paymentStatus ?? (order.paymentMethod === 'Cash on Delivery' ? 'Not Required' : 'Awaiting Verification'),
+    paymentConfirmationAmount: order.paymentConfirmationAmount ?? 0,
+  };
+}
+
 export function getLocalDevOrders() {
   if (typeof window === 'undefined') return [] as Order[];
 
@@ -17,7 +25,7 @@ export function getLocalDevOrders() {
   }
 
   try {
-    return JSON.parse(raw) as Order[];
+    return (JSON.parse(raw) as Order[]).map(normalizeOrder);
   } catch {
     return [];
   }
@@ -26,7 +34,7 @@ export function getLocalDevOrders() {
 export function saveLocalDevOrder(order: Order) {
   if (typeof window === 'undefined') return;
   const orders = getLocalDevOrders();
-  const nextOrders = [order, ...orders.filter((existingOrder) => existingOrder.id !== order.id)];
+  const nextOrders = [normalizeOrder(order), ...orders.filter((existingOrder) => existingOrder.id !== order.id)];
   window.localStorage.setItem(LOCAL_DEV_ORDERS_KEY, JSON.stringify(nextOrders));
   window.dispatchEvent(new CustomEvent(LOCAL_DEV_ORDERS_UPDATED_EVENT));
 }
@@ -37,7 +45,7 @@ export function getLocalDevOrderById(orderId: string) {
 
 export function setLocalDevOrders(orders: Order[]) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(LOCAL_DEV_ORDERS_KEY, JSON.stringify(orders));
+  window.localStorage.setItem(LOCAL_DEV_ORDERS_KEY, JSON.stringify(orders.map(normalizeOrder)));
   window.dispatchEvent(new CustomEvent(LOCAL_DEV_ORDERS_UPDATED_EVENT));
 }
 

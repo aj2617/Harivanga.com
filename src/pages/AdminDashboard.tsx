@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleDatabaseError, mapOrderRow, mapProductRow, mapProductToRow, OperationType, supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
-import { Product, Order, OrderStatus } from '../types';
+import { Product, Order, OrderStatus, PaymentStatus } from '../types';
 import { getLocalDevProducts, getMockProducts, isLocalDevAdminMode, isLocalDevHost, LOCAL_DEV_ADMIN_KEY, setLocalDevProducts } from '../lib/localDevProducts';
 import { getLocalDevOrders, LOCAL_DEV_ORDERS_UPDATED_EVENT, setLocalDevOrders } from '../lib/localDevOrders';
 import { notifyStorefrontProductsChanged } from '../lib/storefrontSync';
@@ -594,6 +594,27 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleUpdatePaymentStatus = async (orderId: string, paymentStatus: PaymentStatus) => {
+    if (isLocalDevBypass) {
+      setOrders((current) => {
+        const nextOrders = current.map((order) => (order.id === orderId ? { ...order, paymentStatus } : order));
+        setLocalDevOrders(nextOrders);
+        return nextOrders;
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('orders').update({ payment_status: paymentStatus }).eq('id', orderId);
+      if (error) {
+        throw error;
+      }
+      await Promise.all([loadOverviewData(), loadOrdersPage()]);
+    } catch (error) {
+      handleDatabaseError(error, OperationType.UPDATE, 'orders');
+    }
+  };
+
   const handleDeleteProduct = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       if (isLocalDevBypass) {
@@ -930,6 +951,12 @@ export const AdminDashboard: React.FC = () => {
     if (status === 'Out for Delivery') return 'bg-blue-50 text-blue-600';
     if (status === 'Confirmed') return 'bg-mango-yellow/10 text-mango-yellow';
     if (status === 'Cancelled') return 'bg-red-50 text-red-500';
+    return 'bg-gray-50 text-gray-500';
+  };
+  const getPaymentStatusClasses = (paymentStatus: PaymentStatus) => {
+    if (paymentStatus === 'Received') return 'bg-green-50 text-green-600';
+    if (paymentStatus === 'Rejected') return 'bg-red-50 text-red-500';
+    if (paymentStatus === 'Awaiting Verification') return 'bg-amber-50 text-amber-600';
     return 'bg-gray-50 text-gray-500';
   };
   const getStockClasses = (stock: number) => {
@@ -1420,8 +1447,11 @@ export const AdminDashboard: React.FC = () => {
                     <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Items</th>
                     <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Delivery</th>
                     <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Total</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment</th>
+                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Order Status</th>
+                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment Status</th>
                     <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Update Status</th>
+                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Update Payment</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -1459,8 +1489,28 @@ export const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="px-8 py-4 font-bold">{formatCurrency(order.total)}</td>
                       <td className="px-8 py-4">
+                        <div className="space-y-2 text-sm">
+                          <div className="font-semibold text-mango-dark">{order.paymentMethod}</div>
+                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
+                            {order.paymentStatus}
+                          </span>
+                          {order.paymentMethod !== 'Cash on Delivery' && (
+                            <div className="space-y-1 text-xs text-gray-500">
+                              <p>Sent from: {order.paymentSenderPhone || 'Not submitted'}</p>
+                              <p>Txn ID: {order.paymentTransactionId || 'Not submitted'}</p>
+                              <p>Confirmation: {formatCurrency(order.paymentConfirmationAmount ?? 0)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-8 py-4">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getOrderStatusClasses(order.status)}`}>
                           {order.status}
+                        </span>
+                      </td>
+                      <td className="px-8 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
+                          {order.paymentStatus}
                         </span>
                       </td>
                       <td className="px-8 py-4 text-right">
@@ -1474,6 +1524,18 @@ export const AdminDashboard: React.FC = () => {
                           <option value="Out for Delivery">Out for Delivery</option>
                           <option value="Delivered">Delivered</option>
                           <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </td>
+                      <td className="px-8 py-4 text-right">
+                        <select
+                          value={order.paymentStatus}
+                          onChange={(e) => handleUpdatePaymentStatus(order.id, e.target.value as PaymentStatus)}
+                          className="text-xs font-bold bg-gray-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-mango-orange/20 cursor-pointer"
+                        >
+                          <option value="Not Required">Not Required</option>
+                          <option value="Awaiting Verification">Awaiting Verification</option>
+                          <option value="Received">Received</option>
+                          <option value="Rejected">Rejected</option>
                         </select>
                       </td>
                     </tr>
@@ -1522,25 +1584,48 @@ export const AdminDashboard: React.FC = () => {
                     <div className="rounded-2xl bg-gray-50 px-3 py-3">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Payment</p>
                       <p className="mt-1 font-semibold text-mango-dark">{order.paymentMethod}</p>
+                      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
+                        {order.paymentStatus}
+                      </p>
                     </div>
                   </div>
+
+                  {order.paymentMethod !== 'Cash on Delivery' && (
+                    <div className="mt-4 rounded-2xl bg-orange-50/50 px-4 py-3 text-sm text-gray-600">
+                      <p><span className="font-bold text-mango-dark">Sender:</span> {order.paymentSenderPhone || 'Not submitted'}</p>
+                      <p className="mt-1"><span className="font-bold text-mango-dark">Txn ID:</span> {order.paymentTransactionId || 'Not submitted'}</p>
+                      <p className="mt-1"><span className="font-bold text-mango-dark">Confirmation:</span> {formatCurrency(order.paymentConfirmationAmount ?? 0)}</p>
+                    </div>
+                  )}
 
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Total</p>
                       <p className="text-lg font-black text-mango-dark">{formatCurrency(order.total)}</p>
                     </div>
-                    <select
-                      value={order.status}
-                      onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
-                      className="max-w-[170px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Confirmed">Confirmed</option>
-                      <option value="Out for Delivery">Out for Delivery</option>
-                      <option value="Delivered">Delivered</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
+                    <div className="flex flex-col gap-2">
+                      <select
+                        value={order.status}
+                        onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
+                        className="max-w-[170px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                      <select
+                        value={order.paymentStatus}
+                        onChange={(e) => handleUpdatePaymentStatus(order.id, e.target.value as PaymentStatus)}
+                        className="max-w-[170px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
+                      >
+                        <option value="Not Required">Not Required</option>
+                        <option value="Awaiting Verification">Awaiting Verification</option>
+                        <option value="Received">Received</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { hasSupabaseConfig } from '../lib/env';
 import { canUseLocalOrderFallback, saveLocalDevOrder } from '../lib/localDevOrders';
+import { calculateDeliveryCharge, DELIVERY_RATE_PER_KG, getCartTotalWeightKg, type DeliveryMethod } from '../lib/delivery';
 import { CheckCircle2, CreditCard, Truck, MapPin, Phone, User as UserIcon, Building2, LocateFixed } from 'lucide-react';
 import { formatCurrency } from '../lib/format';
 import { getThumbnailImageSrc } from '../lib/imageSources';
@@ -21,9 +22,15 @@ const DISTRICTS_BY_DIVISION: Record<string, string[]> = {
   Sylhet: ['Habiganj', 'Moulvibazar', 'Sunamganj', 'Sylhet'],
 };
 
-type DeliveryMethod = 'Home Delivery' | 'Courier Pickup';
+type PaymentMethod = 'bKash' | 'Nagad' | 'Cash on Delivery';
 
 const normalizePhoneNumber = (phone: string) => phone.replace(/\D/g, '');
+const SEND_MONEY_NUMBER = '+8801342262821';
+const MOBILE_PAYMENT_CONFIRMATION_AMOUNT = 120;
+const PAYMENT_APP_LINKS: Record<'bKash' | 'Nagad', string> = {
+  bKash: 'https://play.google.com/store/apps/details?id=com.bKash.customerapp',
+  Nagad: 'https://play.google.com/store/apps/details?id=com.konasl.nagad',
+};
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart } = useCart();
@@ -37,11 +44,14 @@ export const Checkout: React.FC = () => {
     division: 'Dhaka',
     district: 'Dhaka',
     deliveryMethod: 'Home Delivery' as DeliveryMethod,
-    paymentMethod: 'Cash on Delivery' as 'bKash' | 'Nagad' | 'Cash on Delivery',
+    paymentMethod: 'Cash on Delivery' as PaymentMethod,
+    paymentSenderPhone: '',
+    paymentTransactionId: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   useEffect(() => {
     if (!profile) return;
@@ -51,12 +61,19 @@ export const Checkout: React.FC = () => {
       name: current.name || profile.name || '',
       phone: current.phone || profile.phone || '',
       address: current.address || profile.savedAddresses[0] || '',
+      paymentSenderPhone: current.paymentSenderPhone || profile.phone || '',
     }));
   }, [profile]);
 
   const divisionOptions = Object.keys(DISTRICTS_BY_DIVISION);
   const districtOptions = DISTRICTS_BY_DIVISION[formData.division];
-  const deliveryCharge = formData.deliveryMethod === 'Home Delivery' ? 60 : 120;
+  const totalWeightKg = getCartTotalWeightKg(cart);
+  const deliveryCharge = calculateDeliveryCharge(cart, formData.deliveryMethod);
+  const isDigitalPayment = formData.paymentMethod === 'bKash' || formData.paymentMethod === 'Nagad';
+  const paymentAppLink = formData.paymentMethod === 'Cash on Delivery' ? null : PAYMENT_APP_LINKS[formData.paymentMethod];
+  const orderTotal = subtotal + deliveryCharge;
+  const advancePayment = isDigitalPayment ? MOBILE_PAYMENT_CONFIRMATION_AMOUNT : 0;
+  const dueOnDelivery = Math.max(orderTotal - advancePayment, 0);
 
   const deliveryAreaLabel = useMemo(
     () => `${formData.division} / ${formData.district} / ${formData.deliveryMethod}`,
@@ -72,6 +89,15 @@ export const Checkout: React.FC = () => {
     }));
   };
 
+  const handleCopyPaymentNumber = async () => {
+    try {
+      await navigator.clipboard.writeText(SEND_MONEY_NUMBER);
+      setCopyStatus('copied');
+    } catch {
+      setCopyStatus('failed');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) {
@@ -80,6 +106,18 @@ export const Checkout: React.FC = () => {
     }
 
     const orderDate = new Date().toISOString().split('T')[0];
+    if (isDigitalPayment) {
+      if (!formData.paymentSenderPhone.trim()) {
+        setSubmitError('Enter the phone number used to send the mobile payment.');
+        return;
+      }
+
+      if (!formData.paymentTransactionId.trim()) {
+        setSubmitError('Enter the bKash or Nagad transaction ID before placing the order.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
@@ -94,6 +132,10 @@ export const Checkout: React.FC = () => {
         deliveryMethod: formData.deliveryMethod,
         deliveryDate: orderDate,
         paymentMethod: formData.paymentMethod,
+        paymentStatus: isDigitalPayment ? ('Awaiting Verification' as const) : ('Not Required' as const),
+        paymentSenderPhone: isDigitalPayment ? formData.paymentSenderPhone.trim() : undefined,
+        paymentTransactionId: isDigitalPayment ? formData.paymentTransactionId.trim() : undefined,
+        paymentConfirmationAmount: isDigitalPayment ? MOBILE_PAYMENT_CONFIRMATION_AMOUNT : 0,
         items: cart.map((item) => ({
           productId: item.productId,
           productName: item.productName,
@@ -163,6 +205,10 @@ export const Checkout: React.FC = () => {
           deliveryMethod: formData.deliveryMethod,
           deliveryDate: orderDate,
           paymentMethod: formData.paymentMethod,
+          paymentStatus: isDigitalPayment ? ('Awaiting Verification' as const) : ('Not Required' as const),
+          paymentSenderPhone: isDigitalPayment ? formData.paymentSenderPhone.trim() : undefined,
+          paymentTransactionId: isDigitalPayment ? formData.paymentTransactionId.trim() : undefined,
+          paymentConfirmationAmount: isDigitalPayment ? MOBILE_PAYMENT_CONFIRMATION_AMOUNT : 0,
           items: cart.map((item) => ({
             productId: item.productId,
             productName: item.productName,
@@ -318,8 +364,8 @@ export const Checkout: React.FC = () => {
                           <p className="text-base font-black text-mango-dark sm:text-lg">{method}</p>
                           <p className="mt-1 text-[13px] leading-snug text-gray-500 sm:text-sm">
                             {method === 'Home Delivery'
-                              ? 'Delivered to the exact address selected above.'
-                              : 'Pickup from courier point in the selected district.'}
+                              ? `Delivered to the exact address selected above at ${formatCurrency(DELIVERY_RATE_PER_KG[method])}/kg.`
+                              : `Pickup from courier point in the selected district at ${formatCurrency(DELIVERY_RATE_PER_KG[method])}/kg.`}
                           </p>
                         </button>
                       ))}
@@ -346,7 +392,15 @@ export const Checkout: React.FC = () => {
                       <button
                         key={method}
                         type="button"
-                        onClick={() => setFormData({ ...formData, paymentMethod: method })}
+                        onClick={() => {
+                          setFormData((current) => ({
+                            ...current,
+                            paymentMethod: method,
+                            paymentSenderPhone: method === 'Cash on Delivery' ? '' : current.paymentSenderPhone,
+                            paymentTransactionId: method === 'Cash on Delivery' ? '' : current.paymentTransactionId,
+                          }));
+                          setCopyStatus('idle');
+                        }}
                         className={`min-w-0 rounded-xl border-2 px-2 py-2 text-[12px] font-bold transition-all flex flex-col items-center justify-center gap-1 text-center sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm sm:gap-1.5 ${
                           formData.paymentMethod === method
                             ? 'border-mango-orange bg-mango-orange/5 text-mango-orange shadow-md'
@@ -358,6 +412,113 @@ export const Checkout: React.FC = () => {
                       </button>
                     ))}
                   </div>
+                  {isDigitalPayment && (
+                    <div className="mt-4 rounded-2xl border border-mango-orange/20 bg-mango-orange/5 p-4 sm:mt-5 sm:p-5">
+                      <p className="text-sm font-black text-mango-dark sm:text-base">
+                        Send money by {formData.paymentMethod}
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                        To confirm this order, first send <span className="font-bold text-mango-orange">{formatCurrency(MOBILE_PAYMENT_CONFIRMATION_AMOUNT)}</span> to{' '}
+                        <span className="font-bold text-mango-orange">{SEND_MONEY_NUMBER}</span> using <span className="font-bold">{formData.paymentMethod}</span> Send Money.
+                        Then enter the sender phone number and transaction ID below.
+                      </p>
+                      <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm font-bold text-mango-dark shadow-sm">
+                        Payment Number: {SEND_MONEY_NUMBER}
+                      </div>
+                      <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm font-bold text-mango-dark shadow-sm">
+                        Confirmation Amount: {formatCurrency(MOBILE_PAYMENT_CONFIRMATION_AMOUNT)}
+                      </div>
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="space-y-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Sender Phone Number</span>
+                          <input
+                            required={isDigitalPayment}
+                            type="tel"
+                            value={formData.paymentSenderPhone}
+                            onChange={(e) => setFormData({ ...formData, paymentSenderPhone: e.target.value })}
+                            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                            placeholder="01XXXXXXXXX"
+                          />
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Transaction ID</span>
+                          <input
+                            required={isDigitalPayment}
+                            type="text"
+                            value={formData.paymentTransactionId}
+                            onChange={(e) => setFormData({ ...formData, paymentTransactionId: e.target.value.toUpperCase() })}
+                            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm uppercase focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                            placeholder="Enter transaction ID"
+                          />
+                        </label>
+                      </div>
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={handleCopyPaymentNumber}
+                          className="inline-flex items-center justify-center rounded-xl bg-mango-orange px-4 py-3 text-sm font-bold text-white transition-all hover:bg-mango-orange/90"
+                        >
+                          {copyStatus === 'copied' ? 'Number Copied' : 'Copy Number'}
+                        </button>
+                        {paymentAppLink && (
+                          <a
+                            href={paymentAppLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center rounded-xl border border-mango-orange/25 bg-white px-4 py-3 text-sm font-bold text-mango-orange transition-all hover:bg-mango-orange/5"
+                          >
+                            Open {formData.paymentMethod} App
+                          </a>
+                        )}
+                      </div>
+                      <p className="mt-3 text-xs leading-relaxed text-gray-500">
+                        Open the app, choose Send Money, send exactly {formatCurrency(MOBILE_PAYMENT_CONFIRMATION_AMOUNT)}, then submit the sender number and transaction ID.
+                        {copyStatus === 'failed' ? ' Copy failed on this device, so enter the number manually.' : ''}
+                      </p>
+                    </div>
+                  )}
+                  {!isDigitalPayment && (
+                    <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50/80 p-4 sm:mt-5 sm:p-5">
+                      <p className="text-sm font-black text-mango-dark sm:text-base">
+                        Cash on Delivery
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                        You can place the order now and pay in cash when the order is delivered. If you want to confirm the order in advance by mobile payment, switch to bKash or Nagad below.
+                      </p>
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((current) => ({
+                              ...current,
+                              paymentMethod: 'bKash',
+                              paymentSenderPhone: current.paymentSenderPhone,
+                              paymentTransactionId: current.paymentTransactionId,
+                            }));
+                            setCopyStatus('idle');
+                          }}
+                          className="inline-flex items-center justify-center rounded-xl border border-mango-orange/25 bg-white px-4 py-3 text-sm font-bold text-mango-orange transition-all hover:bg-mango-orange/5"
+                        >
+                          Choose bKash
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((current) => ({
+                              ...current,
+                              paymentMethod: 'Nagad',
+                              paymentSenderPhone: current.paymentSenderPhone,
+                              paymentTransactionId: current.paymentTransactionId,
+                            }));
+                            setCopyStatus('idle');
+                          }}
+                          className="inline-flex items-center justify-center rounded-xl border border-mango-orange/25 bg-white px-4 py-3 text-sm font-bold text-mango-orange transition-all hover:bg-mango-orange/5"
+                        >
+                          Choose Nagad
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -365,7 +526,7 @@ export const Checkout: React.FC = () => {
                   disabled={isSubmitting || cart.length === 0}
                   className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl bg-mango-orange py-4 text-base font-black text-white shadow-xl shadow-mango-orange/20 transition-all hover:bg-mango-orange/90 disabled:bg-gray-200 disabled:shadow-none sm:mt-12 sm:py-5 sm:text-lg"
                 >
-                  {isSubmitting ? 'Processing Order...' : `Place Order - ${formatCurrency(subtotal + deliveryCharge)}`}
+                  {isSubmitting ? 'Processing Order...' : `Place Order - ${formatCurrency(orderTotal)}`}
                 </button>
                 {submitError && (
                   <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -409,13 +570,25 @@ export const Checkout: React.FC = () => {
                   <span className="font-bold text-mango-dark">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-500">
-                  <span>{formData.deliveryMethod}</span>
+                  <span>{formData.deliveryMethod} ({totalWeightKg}kg)</span>
                   <span className="font-bold text-mango-dark">{formatCurrency(deliveryCharge)}</span>
                 </div>
+                {isDigitalPayment && (
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <span>{formData.paymentMethod} advance</span>
+                    <span className="font-bold text-green-600">- {formatCurrency(advancePayment)}</span>
+                  </div>
+                )}
                 <div className="pt-4 flex justify-between items-center">
                   <span className="text-base font-bold sm:text-lg">Total</span>
-                  <span className="text-xl font-black text-mango-orange sm:text-2xl">{formatCurrency(subtotal + deliveryCharge)}</span>
+                  <span className="text-xl font-black text-mango-orange sm:text-2xl">{formatCurrency(orderTotal)}</span>
                 </div>
+                {isDigitalPayment && (
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-sm font-bold text-gray-500">Pay on delivery</span>
+                    <span className="text-lg font-black text-mango-dark">{formatCurrency(dueOnDelivery)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 flex items-start gap-3 rounded-2xl bg-orange-50 p-3.5 sm:mt-8 sm:p-4">

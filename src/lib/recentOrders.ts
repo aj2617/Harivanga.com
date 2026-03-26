@@ -2,11 +2,19 @@ import { Order } from '../types';
 
 const RECENT_ORDERS_KEY = 'harivanga_recent_orders';
 
+function normalizeOrder(order: Order): Order {
+  return {
+    ...order,
+    paymentStatus: order.paymentStatus ?? (order.paymentMethod === 'Cash on Delivery' ? 'Not Required' : 'Awaiting Verification'),
+    paymentConfirmationAmount: order.paymentConfirmationAmount ?? 0,
+  };
+}
+
 export function saveRecentOrder(order: Order) {
   if (typeof window === 'undefined') return;
 
   const current = getRecentOrders();
-  const nextOrders = [order, ...current.filter((entry) => entry.id !== order.id)].slice(0, 10);
+  const nextOrders = [normalizeOrder(order), ...current.filter((entry) => entry.id !== order.id)].slice(0, 10);
   window.sessionStorage.setItem(RECENT_ORDERS_KEY, JSON.stringify(nextOrders));
 }
 
@@ -17,7 +25,7 @@ export function getRecentOrders() {
   if (!raw) return [] as Order[];
 
   try {
-    return JSON.parse(raw) as Order[];
+    return (JSON.parse(raw) as Order[]).map(normalizeOrder);
   } catch {
     return [] as Order[];
   }
