@@ -1,13 +1,15 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Minus, Plus, ArrowRight, ShoppingBag } from 'lucide-react';
-import { useCart } from '../context/CartContext';
+import { useCartActions, useCartItems, useCartSummary } from '../context/CartContext';
 import { calculateDeliveryCharge, getCartTotalWeightKg } from '../lib/delivery';
 import { formatCurrency } from '../lib/format';
 import { getThumbnailImageSrc } from '../lib/imageSources';
 
 export const CartPage: React.FC = () => {
-  const { cart, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
+  const cart = useCartItems();
+  const { removeFromCart, updateQuantity } = useCartActions();
+  const { subtotal, totalItems } = useCartSummary();
   const navigate = useNavigate();
   const totalWeightKg = getCartTotalWeightKg(cart);
   const deliveryCharge = calculateDeliveryCharge(cart, 'Home Delivery');

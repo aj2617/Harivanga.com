@@ -1,30 +1,25 @@
-import React, { useMemo, useState } from 'react';
+import React, { useDeferredValue, useMemo, useState } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 
 export const ProductListing: React.FC = () => {
-  const { products: allProducts, loading } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVariety, setSelectedVariety] = useState('All');
-  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const deferredVariety = useDeferredValue(selectedVariety);
+  const activeVariety = deferredVariety === 'All' ? '' : deferredVariety;
+  const { products, loading } = useProducts({ search: deferredSearchQuery, variety: activeVariety });
+  const { products: varietyProducts } = useProducts();
 
-  const products = useMemo(() => {
-    return allProducts.filter((product) => {
-      const matchesSearch =
-        normalizedSearch.length === 0
-        || product.name.toLowerCase().includes(normalizedSearch)
-        || product.variety.toLowerCase().includes(normalizedSearch);
-      const matchesVariety = selectedVariety === 'All' || product.variety === selectedVariety;
+  const varieties = useMemo(() => {
+    const uniqueVarieties = Array.from(new Set(varietyProducts.map((product) => product.variety)));
+    if (selectedVariety !== 'All' && !uniqueVarieties.includes(selectedVariety)) {
+      uniqueVarieties.push(selectedVariety);
+    }
 
-      return matchesSearch && matchesVariety;
-    });
-  }, [allProducts, normalizedSearch, selectedVariety]);
-
-  const varieties = useMemo(
-    () => ['All', ...Array.from(new Set(allProducts.map((product) => product.variety)))],
-    [allProducts]
-  );
+    return ['All', ...uniqueVarieties];
+  }, [selectedVariety, varietyProducts]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
