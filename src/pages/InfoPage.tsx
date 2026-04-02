@@ -150,18 +150,18 @@ export const InfoPage: React.FC = () => {
               </div>
 
               <div className="bg-[linear-gradient(180deg,#fff8ef_0%,#fff4e8_100%)] px-7 py-9 sm:px-9 lg:px-10">
-                <div className="max-w-3xl space-y-4 text-[#6b5b49]">
-                  <p className="text-base leading-[1.4] sm:text-[1.3rem]">
+                <div className="max-w-3xl space-y-3 text-[#6b5b49]">
+                  <p className="text-[1.05rem] leading-[1.32] sm:text-[1.38rem]">
                     <span className="font-black text-[#9c5400]">নাম:</span> মো: সানবীর ইসলাম (জীম)।
                   </p>
 
-                  <div className="space-y-0 text-base leading-[1.4] sm:text-[1.3rem]">
+                  <div className="space-y-0 text-[1.05rem] leading-[1.32] sm:text-[1.38rem]">
                     <p><span className="font-black text-[#9c5400]">পড়াশুনা:</span> অনার্স তৃতীয়বর্ষ।</p>
-                    <p className="block text-sm leading-[1.25] text-[#847361] sm:text-[1.05rem]">(গণিত বিভাগ)</p>
+                    <p className="block text-[0.95rem] leading-[1.15] text-[#847361] sm:text-[1.08rem]">(গণিত বিভাগ)</p>
                     <p>রংপুর সরকারি কলেজ।</p>
                   </div>
 
-                  <p className="pt-1 text-base leading-[1.45] sm:text-[1.3rem]">
+                  <p className="pt-1 text-[1.05rem] leading-[1.34] sm:text-[1.38rem]">
                     পড়াশুনার পাশাপাশি নিজেকে উদ্যোক্তা হিসেবে গড়ে তুলতে চাই। সকলের সহযোগীতা আমার একান্ত কাম্য। ধন্যবাদ।
                   </p>
                 </div>
