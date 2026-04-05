@@ -15,8 +15,8 @@ const OrderConfirmation = lazy(() =>
 const Account = lazy(() => import('./pages/Account').then((module) => ({ default: module.Account })));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
 const InfoPage = lazy(() => import('./pages/InfoPage').then((module) => ({ default: module.InfoPage })));
-const WhatsAppWidget = lazy(() =>
-  import('./components/WhatsAppWidget').then((module) => ({ default: module.WhatsAppWidget }))
+const UnifiedContactWidget = lazy(() =>
+  import('./components/UnifiedContactWidget').then((module) => ({ default: module.UnifiedContactWidget }))
 );
 
 const AppShellFallback: React.FC = () => (
@@ -78,7 +78,7 @@ function App() {
             <ScrollToTop />
             <AppRoutes />
             <Suspense fallback={null}>
-              <WhatsAppWidget />
+              <UnifiedContactWidget />
             </Suspense>
           </>
         </Router>
