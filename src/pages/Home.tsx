@@ -4,6 +4,8 @@ import { ArrowRight, PlayCircle, ShieldCheck, Truck, Leaf, Home as HomeIcon } fr
 import { ProductCard } from '../features/products/components/ProductCard';
 import { useProducts } from '../features/products/hooks/useProducts';
 import { ADMIN_SETTINGS_CHANGED_EVENT, ADMIN_SETTINGS_KEY, LEGACY_ADMIN_SETTINGS_KEY } from '../lib/adminSettings';
+import { hasSupabaseConfig } from '../lib/env';
+import { supabase } from '../supabase';
 import slide1 from '../assets/home/slide-01.jpeg';
 import slide2 from '../assets/home/slide-02.jpeg';
 import slide3 from '../assets/home/slide-03.jpeg';
@@ -53,7 +55,7 @@ const normalizePromoStories = (value: unknown): HomePromotion['promoStories'] =>
 
 const HOME_BANNER_SLIDES = [slide9, slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide10];
 
-const loadHomePromotion = (): HomePromotion => {
+const loadHomePromotionFromLocalStorage = (): HomePromotion => {
   if (typeof window === 'undefined') return DEFAULT_HOME_PROMOTION;
 
   try {
@@ -87,6 +89,33 @@ const loadHomePromotion = (): HomePromotion => {
     };
   } catch {
     return DEFAULT_HOME_PROMOTION;
+  }
+};
+
+const loadHomePromotionFromSupabase = async (): Promise<HomePromotion> => {
+  if (!hasSupabaseConfig) {
+    return loadHomePromotionFromLocalStorage();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('home_promotion')
+      .select('promo_stories')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    const normalizedStories = normalizePromoStories((data as { promo_stories?: unknown } | null)?.promo_stories);
+    if (normalizedStories.length > 0) {
+      return { promoStories: normalizedStories };
+    }
+
+    return loadHomePromotionFromLocalStorage();
+  } catch {
+    return loadHomePromotionFromLocalStorage();
   }
 };
 
@@ -149,17 +178,33 @@ export const Home: React.FC = () => {
   const [activeBannerSlide, setActiveBannerSlide] = useState(0);
 
   useEffect(() => {
-    const syncPromotion = () => {
-      setPromotion(loadHomePromotion());
+    let cancelled = false;
+    let refreshTimer: number | null = null;
+
+    const syncPromotion = async () => {
+      const nextPromotion = await loadHomePromotionFromSupabase();
+      if (!cancelled) {
+        setPromotion(nextPromotion);
+      }
     };
 
-    syncPromotion();
-    window.addEventListener('storage', syncPromotion);
-    window.addEventListener(ADMIN_SETTINGS_CHANGED_EVENT, syncPromotion);
+    void syncPromotion();
+    const handlePossibleChange = () => void syncPromotion();
+    window.addEventListener('storage', handlePossibleChange);
+    window.addEventListener(ADMIN_SETTINGS_CHANGED_EVENT, handlePossibleChange);
+
+    if (hasSupabaseConfig) {
+      // Pull changes made by admins on other devices after a page visit.
+      refreshTimer = window.setInterval(() => void syncPromotion(), 60000);
+    }
 
     return () => {
-      window.removeEventListener('storage', syncPromotion);
-      window.removeEventListener(ADMIN_SETTINGS_CHANGED_EVENT, syncPromotion);
+      cancelled = true;
+      window.removeEventListener('storage', handlePossibleChange);
+      window.removeEventListener(ADMIN_SETTINGS_CHANGED_EVENT, handlePossibleChange);
+      if (refreshTimer !== null) {
+        window.clearInterval(refreshTimer);
+      }
     };
   }, []);
 

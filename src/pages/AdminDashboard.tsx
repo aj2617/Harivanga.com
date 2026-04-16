@@ -17,7 +17,7 @@ import {
   Plus, Edit2, Trash2,
   Search, Settings as SettingsIcon, House, Lock
 } from 'lucide-react';
-import { canUseDevelopmentFallbacks } from '../lib/env';
+import { canUseDevelopmentFallbacks, hasSupabaseConfig } from '../lib/env';
 
 const AdminProductModal = lazy(() =>
   import('../features/admin/components/AdminProductModal').then((module) => ({ default: module.AdminProductModal }))
@@ -221,6 +221,29 @@ const loadSettings = (): AdminSettings => {
   }
 };
 
+const loadPromoStoriesFromSupabase = async (): Promise<PromoStoryInput[] | null> => {
+  if (!hasSupabaseConfig) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('home_promotion')
+      .select('promo_stories')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    const normalizedStories = normalizePromoStories((data as { promo_stories?: unknown } | null)?.promo_stories);
+    return normalizedStories.length > 0 ? normalizedStories : null;
+  } catch {
+    return null;
+  }
+};
+
 const createEmptyProductForm = (): Partial<Product> => ({
   ...DEFAULT_PRODUCT_FORM,
   images: [],
@@ -282,6 +305,30 @@ export const AdminDashboard: React.FC = () => {
   const [productForm, setProductForm] = useState<Partial<Product>>(createEmptyProductForm);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [productSubmitError, setProductSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAdmin || !hasSupabaseConfig) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const remoteStories = await loadPromoStoriesFromSupabase();
+      if (!remoteStories || cancelled) {
+        return;
+      }
+
+      setSettingsForm((current) => ({
+        ...current,
+        promoStories: remoteStories,
+      }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!settingsSavedMessage) return;
@@ -726,18 +773,64 @@ export const AdminDashboard: React.FC = () => {
     });
   };
 
-  const handleSaveSettings = (event: React.FormEvent) => {
+  const handleSaveSettings = async (event: React.FormEvent) => {
     event.preventDefault();
+
     window.localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(settingsForm));
     notifyAdminSettingsChanged();
+
+    // Local-dev admin bypass has no Supabase session/JWT, so it cannot write to the DB.
+    if (hasSupabaseConfig && isAdmin) {
+      setSettingsSavedMessage('Saving...');
+      try {
+        const { error } = await supabase.from('home_promotion').upsert(
+          {
+            id: 1,
+            promo_stories: settingsForm.promoStories,
+          },
+          { onConflict: 'id' }
+        );
+
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        console.error('Failed to sync home promotion', error);
+        setSettingsSavedMessage('Saved locally (cloud sync failed)');
+        return;
+      }
+    }
+
     setSettingsSavedMessage('Settings saved');
   };
 
-  const handleResetSettings = () => {
+  const handleResetSettings = async () => {
     if (!window.confirm('Reset settings to default values?')) return;
     window.localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
     setSettingsForm(DEFAULT_SETTINGS);
     notifyAdminSettingsChanged();
+
+    if (hasSupabaseConfig && isAdmin) {
+      setSettingsSavedMessage('Resetting...');
+      try {
+        const { error } = await supabase.from('home_promotion').upsert(
+          {
+            id: 1,
+            promo_stories: DEFAULT_SETTINGS.promoStories,
+          },
+          { onConflict: 'id' }
+        );
+
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        console.error('Failed to reset home promotion', error);
+        setSettingsSavedMessage('Reset locally (cloud sync failed)');
+        return;
+      }
+    }
+
     setSettingsSavedMessage('Settings reset');
   };
 

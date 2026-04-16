@@ -375,3 +375,58 @@ create index if not exists orders_customer_phone_normalized_idx on public.orders
 create index if not exists orders_created_at_idx on public.orders (created_at desc);
 create index if not exists orders_user_phone_created_at_idx
 on public.orders (user_id, customer_phone_normalized, created_at desc);
+
+-- Site-wide content that must be shared across devices (e.g. homepage promo videos).
+create table if not exists public.home_promotion (
+  id integer primary key default 1,
+  promo_stories jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+insert into public.home_promotion (id, promo_stories)
+values (1, '[]'::jsonb)
+on conflict (id) do nothing;
+
+create or replace function public.touch_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists home_promotion_touch_updated_at on public.home_promotion;
+create trigger home_promotion_touch_updated_at
+before update on public.home_promotion
+for each row execute function public.touch_updated_at();
+
+alter table public.home_promotion enable row level security;
+
+drop policy if exists "home_promotion_public_read" on public.home_promotion;
+create policy "home_promotion_public_read"
+on public.home_promotion
+for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "home_promotion_admin_write" on public.home_promotion;
+create policy "home_promotion_admin_write"
+on public.home_promotion
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.users
+    where users.id = auth.uid() and users.role = 'admin'
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.users
+    where users.id = auth.uid() and users.role = 'admin'
+  )
+);
