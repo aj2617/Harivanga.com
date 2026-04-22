@@ -5,9 +5,13 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const basePath = env.VITE_BASE_PATH?.trim();
 
   return {
-    base: '/',
+    base:
+      basePath && basePath !== '/'
+        ? (basePath.endsWith('/') ? basePath : `${basePath}/`)
+        : '/',
     plugins: [
       react(),
       tailwindcss(),
@@ -26,9 +30,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     ],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
