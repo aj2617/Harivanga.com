@@ -40,6 +40,32 @@ This is a static site (Vite build). Shared hosting cannot run the Supabase Edge 
 
 If you use the AI assistant in production, deploy the Supabase Edge Function and set `GEMINI_API_KEY` in Supabase secrets (do **not** use `VITE_GEMINI_API_KEY` in production).
 
+## GitHub -> Namecheap cPanel Deploy (no Node.js on server)
+
+Namecheap shared hosting typically cannot run Node builds on the server. The easiest Git-based flow is:
+
+1. GitHub Actions builds `dist/` and publishes it to a separate branch named `cpanel`.
+2. cPanel pulls/deploys the `cpanel` branch into `public_html/`.
+
+### 1) Configure GitHub Secrets
+
+In GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
+
+- `VITE_SUPABASE_URL` = `https://YOUR_PROJECT.supabase.co`
+- `VITE_SUPABASE_ANON_KEY` = your anon/publishable key
+- Optional `VITE_BASE_PATH` = `/shop/` (only if hosting in a subfolder; leave empty for root)
+
+The workflow file is `.github/workflows/deploy-cpanel.yml`. It runs on every push to `main` and updates the `cpanel` branch.
+
+### 2) Deploy in cPanel
+
+cPanel → **Git Version Control**:
+
+- Create/clone the repository (use the repo SSH URL; add an SSH key if needed).
+- Set the repository branch to `cpanel`.
+- Set the deploy path to your document root (usually `public_html/` or your addon domain root).
+- Use **Pull/Deploy** after each update (or enable auto-deploy if your cPanel supports it).
+
 ## Production Notes
 
 - Admin access is controlled by the `users.role = 'admin'` value in Supabase, not by a hardcoded email.

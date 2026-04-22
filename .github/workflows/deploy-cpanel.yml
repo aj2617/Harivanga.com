@@ -1,0 +1,53 @@
+name: Build and publish (cPanel)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-cpanel
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Create .env.production from secrets
+        shell: bash
+        run: |
+          cat > .env.production <<'EOF'
+          VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_BASE_PATH=${{ secrets.VITE_BASE_PATH }}
+          EOF
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint (tsc)
+        run: npm run -s lint
+
+      - name: Build
+        run: npm run -s build
+
+      - name: Publish dist to cpanel branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: cpanel
+          force_orphan: true
+
