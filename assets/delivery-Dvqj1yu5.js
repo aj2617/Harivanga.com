@@ -1,0 +1,1 @@
+const n={"Home Delivery":110,"Courier Pickup":100};function t(n){return n.reduce((n,t)=>n+function(n){const t=n.match(/(\d+(?:\.\d+)?)\s*kg/i);if(!t)return 1;const r=Number(t[1]);return Number.isFinite(r)&&r>0?r:1}(t.variant)*t.quantity,0)}function r(r,e){const u=t(r);return Math.round(u*n[e])}export{n as D,r as c,t as g};

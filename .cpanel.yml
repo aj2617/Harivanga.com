@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    # Deploy path for this account's domain document root.
+    # For harivangaa.com the document root is: /home/bongcgnc/harivangaa.com
+    - export DEPLOYPATH="$HOME/harivangaa.com/"
+    - /bin/mkdir -p "$DEPLOYPATH"
+    # Copy the built static site (including dotfiles like .htaccess) into the deploy path.
+    - rsync -a --exclude=".git/" --exclude=".cpanel.yml" ./ "$DEPLOYPATH"

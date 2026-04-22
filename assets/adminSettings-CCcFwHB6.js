@@ -1,0 +1,1 @@
+const n="harivanga_admin_settings",a="mangobd_admin_settings",s="harivanga:admin-settings-changed",t=()=>{"undefined"!=typeof window&&window.dispatchEvent(new CustomEvent(s))};export{s as A,a as L,n as a,t as n};
