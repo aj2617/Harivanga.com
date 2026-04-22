@@ -1,10 +1,9 @@
 ---
 deployment:
   tasks:
-    # Default deploy path for the primary domain in cPanel.
-    # If you are deploying to an addon domain/subdomain folder, change this path accordingly.
-    - export DEPLOYPATH="$HOME/public_html/"
+    # Deploy path for this account's domain document root.
+    # For harivangaa.com the document root is: /home/bongcgnc/harivangaa.com
+    - export DEPLOYPATH="$HOME/harivangaa.com/"
     - /bin/mkdir -p "$DEPLOYPATH"
     # Copy the built static site (including dotfiles like .htaccess) into the deploy path.
     - rsync -a --exclude=".git/" --exclude=".cpanel.yml" ./ "$DEPLOYPATH"
-
