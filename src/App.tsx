@@ -14,6 +14,9 @@ const OrderConfirmation = lazy(() =>
 );
 const Account = lazy(() => import('./pages/Account').then((module) => ({ default: module.Account })));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
+const AdminResetPassword = lazy(() =>
+  import('./pages/AdminResetPassword').then((module) => ({ default: module.AdminResetPassword }))
+);
 const InfoPage = lazy(() => import('./pages/InfoPage').then((module) => ({ default: module.InfoPage })));
 const UnifiedContactWidget = lazy(() =>
   import('./components/UnifiedContactWidget').then((module) => ({ default: module.UnifiedContactWidget }))
@@ -64,6 +67,7 @@ function AppRoutes() {
           <Route path="privacy" element={<InfoPage />} />
         </Route>
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/reset" element={<AdminResetPassword />} />
       </Routes>
     </Suspense>
   );

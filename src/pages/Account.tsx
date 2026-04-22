@@ -94,150 +94,161 @@ export const Account: React.FC = () => {
   }, [hasSearched, normalizedPhone]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="fade-up-enter bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
-          <div className="max-w-2xl">
-            <h1 className="text-3xl font-black text-mango-dark">Track Your Order</h1>
-            <p className="mt-3 text-gray-500">
-              Enter the phone number used at checkout to view your latest order updates.
+    <div className="min-h-screen bg-gray-50 py-6 pb-24 sm:py-12">
+      <div className="mx-auto max-w-lg px-4 sm:max-w-2xl sm:px-6 lg:px-8">
+        <div className="fade-up-enter rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-8">
+          <div className="max-w-xl">
+            <h1 className="text-xl font-black tracking-tight text-mango-dark sm:text-2xl">Track your order</h1>
+            <p className="mt-2 text-sm leading-relaxed text-gray-500">
+              Enter the phone number used at checkout to view your latest order update.
             </p>
           </div>
 
           {!canUseLocalOrderFallback() && !hasSupabaseConfig && (
-            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
-              Supabase environment variables are missing. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before enabling live phone tracking.
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium leading-relaxed text-red-600 sm:text-sm">
+              Store configuration is incomplete. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to enable live phone tracking.
             </div>
           )}
 
-          <form onSubmit={handleTrackOrders} className="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
-            <label className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
-                <Phone size={14} /> Phone Number
+          <form onSubmit={handleTrackOrders} className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex-1 space-y-2">
+              <span className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+                <Phone size={14} /> Phone number
               </span>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-mango-orange focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
               />
             </label>
             <button
               type="submit"
               disabled={isSearching}
-              className="self-end rounded-2xl bg-mango-orange px-6 py-3 font-bold text-white transition-all hover:bg-mango-orange/90 disabled:bg-gray-200"
+              className="w-full rounded-xl bg-mango-orange px-6 py-3 text-sm font-bold text-white transition-all hover:bg-mango-orange/90 disabled:bg-gray-200 sm:w-auto"
             >
               {isSearching ? 'Checking...' : 'Check Status'}
             </button>
           </form>
 
           {searchError && (
-            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600 sm:text-sm">
               {searchError}
             </div>
           )}
 
-          <div className="mt-10">
-            <h2 className="text-2xl font-black text-mango-dark mb-6">Order Status</h2>
+          {(orders.length > 0 || hasSearched) && (
+            <div className="mt-8">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Latest order</p>
 
-            {orders.length > 0 ? (
-              <div className="space-y-6">
-                {orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="fade-up-enter bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
-                  >
-                    <div className="p-6 md:p-8">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                        <div>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Order ID: #{order.id.slice(-6).toUpperCase()}</p>
-                          <p className="text-sm text-gray-500">Placed on {formatMediumDate(new Date(order.createdAt))}</p>
+              {orders.length > 0 ? (
+                <div className="mt-3 space-y-3">
+                  {orders.map((order) => {
+                    const visibleItems = order.items.slice(0, 3);
+                    const remainingCount = Math.max(0, order.items.length - visibleItems.length);
+
+                    return (
+                      <div
+                        key={order.id}
+                        className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                              Order #{order.id.slice(-6).toUpperCase()}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500">
+                              Placed {formatMediumDate(new Date(order.createdAt))}
+                            </p>
+                          </div>
+
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold ${
+                                order.status === 'Delivered'
+                                  ? 'bg-green-50 text-green-600'
+                                  : order.status === 'Out for Delivery'
+                                    ? 'bg-blue-50 text-blue-600'
+                                    : order.status === 'Confirmed'
+                                      ? 'bg-mango-yellow/10 text-mango-yellow'
+                                      : 'bg-gray-50 text-gray-500'
+                              }`}
+                            >
+                              {order.status === 'Delivered' ? (
+                                <CheckCircle2 size={13} />
+                              ) : order.status === 'Out for Delivery' ? (
+                                <Truck size={13} />
+                              ) : order.status === 'Confirmed' ? (
+                                <CheckCircle2 size={13} />
+                              ) : (
+                                <Clock size={13} />
+                              )}
+                              {order.status}
+                            </span>
+                            <span
+                              className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold ${getPaymentStatusClasses(order.paymentStatus)}`}
+                            >
+                              {order.paymentStatus}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <div className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 ${
-                            order.status === 'Delivered' ? 'bg-green-50 text-green-600' :
-                            order.status === 'Out for Delivery' ? 'bg-blue-50 text-blue-600' :
-                            order.status === 'Confirmed' ? 'bg-mango-yellow/10 text-mango-yellow' :
-                            'bg-gray-50 text-gray-500'
-                          }`}>
-                            {order.status === 'Delivered' ? <CheckCircle2 size={14} /> :
-                             order.status === 'Out for Delivery' ? <Truck size={14} /> :
-                             order.status === 'Confirmed' ? <CheckCircle2 size={14} /> :
-                             <Clock size={14} />}
-                            {order.status}
-                          </div>
-                          <div className={`px-4 py-2 rounded-full text-xs font-bold ${getPaymentStatusClasses(order.paymentStatus)}`}>
-                            Payment: {order.paymentStatus}
-                          </div>
+
+                        <div className="mt-4 space-y-2">
+                          {visibleItems.map((item, idx) => (
+                            <div key={idx} className="flex items-start justify-between gap-3 text-[13px] sm:text-sm">
+                              <span className="min-w-0 break-words text-gray-600">
+                                {item.quantity} x {item.productName}{' '}
+                                <span className="text-[11px] text-gray-400 sm:text-xs">({item.variant})</span>
+                              </span>
+                              <span className="shrink-0 font-bold text-mango-dark">
+                                {formatCurrency(item.price * item.quantity)}
+                              </span>
+                            </div>
+                          ))}
+                          {remainingCount > 0 && (
+                            <p className="text-xs font-semibold text-gray-400">+ {remainingCount} more item(s)</p>
+                          )}
                         </div>
-                      </div>
 
-                      <div className="flex flex-wrap gap-4 mb-8">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl">
-                            <span className="text-xs font-bold text-mango-dark">{item.quantity}x</span>
-                            <span className="text-xs text-gray-500">{item.productName}</span>
-                            <span className="text-[10px] text-gray-400">({item.variant})</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex flex-col md:flex-row justify-between items-center pt-6 border-t border-gray-50 gap-4">
-                        <div className="flex items-center gap-6">
+                        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Total Amount</p>
-                            <p className="font-black text-lg text-mango-dark">{formatCurrency(order.total)}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total</p>
+                            <p className="text-base font-black text-mango-dark sm:text-lg">{formatCurrency(order.total)}</p>
                           </div>
-                          <div>
-                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Payment</p>
-                            <p className="font-bold text-sm text-gray-600">{order.paymentMethod}</p>
-                            <p className="mt-1 text-xs text-gray-500">Status: {order.paymentStatus}</p>
-                            {order.paymentMethod !== 'Cash on Delivery' && order.paymentTransactionId && (
-                              <p className="mt-1 text-xs text-gray-500">Txn ID: {order.paymentTransactionId}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-3 w-full md:w-auto">
                           <button
                             onClick={() => {
                               saveRecentOrder(order);
                               navigate(`/order-confirmation/${order.id}`);
                             }}
-                            className="flex-grow md:flex-grow-0 px-6 py-3 bg-gray-100 text-mango-dark rounded-xl font-bold text-sm hover:bg-gray-200 transition-all"
+                            className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-mango-dark transition-all hover:bg-gray-200"
                           >
-                            View Details
+                            View details
                           </button>
                         </div>
                       </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-3 rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 text-gray-300">
+                    <Package size={22} />
                   </div>
-                ))}
-              </div>
-            ) : hasSearched ? (
-              <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
-                  <Package size={40} />
+                  <p className="text-sm font-bold text-mango-dark">No orders found</p>
+                  <p className="mt-1 text-[13px] text-gray-500 sm:text-sm">
+                    We could not find an order with that phone number.
+                  </p>
+                  <button
+                    onClick={() => navigate('/products')}
+                    className="mt-4 text-sm font-bold text-mango-orange hover:underline"
+                  >
+                    Continue shopping
+                  </button>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No orders found</h3>
-                <p className="text-gray-500">We could not find any order with that phone number.</p>
-              </div>
-            ) : (
-              <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
-                  <Search size={40} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Check your latest order</h3>
-                <p className="text-gray-500">Enter your phone number above to see pending, confirmed, and delivered orders.</p>
-                <button
-                  onClick={() => navigate('/products')}
-                  className="mt-6 text-mango-orange font-bold hover:underline"
-                >
-                  Continue Shopping
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -15,7 +15,7 @@ import { formatLongDate, formatOrderTimestamp, formatShortMonthDay } from '../li
 import { 
   LayoutDashboard, Package, ShoppingBag, TrendingUp, 
   Plus, Edit2, Trash2,
-  Search, Settings as SettingsIcon, House, Lock
+  Search, Settings as SettingsIcon, House, Lock, LogOut
 } from 'lucide-react';
 import { canUseDevelopmentFallbacks, hasSupabaseConfig } from '../lib/env';
 
@@ -290,6 +290,8 @@ export const AdminDashboard: React.FC = () => {
   const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : '');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
+  const [adminResetMessage, setAdminResetMessage] = useState<string | null>(null);
+  const [isAdminResetting, setIsAdminResetting] = useState(false);
   const [isAdminAuthenticating, setIsAdminAuthenticating] = useState(false);
   const [isLocalDevAuthenticated, setIsLocalDevAuthenticated] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -982,6 +984,7 @@ export const AdminDashboard: React.FC = () => {
   const handleAdminLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setAdminLoginError(null);
+    setAdminResetMessage(null);
 
     const normalizedEmail = adminEmail.trim().toLowerCase();
     if (localHost && normalizedEmail === LOCAL_DEV_ADMIN_EMAIL && adminPassword === LOCAL_DEV_ADMIN_PASSWORD) {
@@ -1022,6 +1025,57 @@ export const AdminDashboard: React.FC = () => {
       setAdminLoginError(message);
     } finally {
       setIsAdminAuthenticating(false);
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    setAdminLoginError(null);
+    setAdminResetMessage(null);
+
+    if (localHost) {
+      window.localStorage.removeItem(LOCAL_DEV_ADMIN_KEY);
+      setIsLocalDevAuthenticated(false);
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    } finally {
+      setAdminPassword('');
+      setActiveTab('overview');
+      navigate('/admin');
+    }
+  };
+
+  const handleAdminPasswordReset = async () => {
+    setAdminLoginError(null);
+    setAdminResetMessage(null);
+
+    const normalizedEmail = adminEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setAdminLoginError('Enter your admin email first.');
+      return;
+    }
+
+    if (localHost && normalizedEmail === LOCAL_DEV_ADMIN_EMAIL) {
+      setAdminLoginError('Password reset is not available for the local test login.');
+      return;
+    }
+
+    setIsAdminResetting(true);
+    try {
+      const redirectTo = `${window.location.origin}/admin/reset`;
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+      if (error) {
+        throw error;
+      }
+      setAdminResetMessage('Password reset email sent. Check your inbox.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not send reset email.';
+      setAdminLoginError(message);
+    } finally {
+      setIsAdminResetting(false);
     }
   };
 
@@ -1091,6 +1145,21 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 )}
 
+                {adminResetMessage && (
+                  <div className="rounded-[18px] border border-emerald-200/20 bg-emerald-900/20 px-4 py-3 text-sm font-medium text-emerald-100">
+                    {adminResetMessage}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleAdminPasswordReset}
+                  disabled={isAdminResetting || isAdminAuthenticating}
+                  className="w-full text-center text-xs font-semibold text-[#8da0c5] transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isAdminResetting ? 'Sending reset email...' : 'Forgot password? Send reset link'}
+                </button>
+
                 {canUseDevelopmentFallbacks() && (
                   <div className="rounded-[16px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-xs font-medium text-[#b8c7ea]">
                     Local test login: <span className="font-bold text-white">{LOCAL_DEV_ADMIN_EMAIL}</span> / <span className="font-bold text-white">{LOCAL_DEV_ADMIN_PASSWORD}</span>
@@ -1148,7 +1217,7 @@ export const AdminDashboard: React.FC = () => {
     return 'bg-gray-50 text-gray-500';
   };
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
+    <div className="font-admin min-h-screen bg-gray-50 flex flex-col lg:flex-row">
       {/* Sidebar */}
       <aside className="w-64 bg-mango-dark text-white hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="p-8">
@@ -1198,6 +1267,14 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-[10px] text-gray-500 uppercase tracking-widest">Super Admin</p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => void handleAdminLogout()}
+            className="mt-5 w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            <LogOut size={18} />
+            Logout
+          </button>
         </div>
       </aside>
 
@@ -1216,6 +1293,14 @@ export const AdminDashboard: React.FC = () => {
                 aria-label="Go to home page"
               >
                 <House size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleAdminLogout()}
+                className="inline-flex items-center justify-center rounded-2xl bg-white/10 p-3 text-white transition hover:bg-white/15"
+                aria-label="Logout"
+              >
+                <LogOut size={18} />
               </button>
               <div className="text-right">
                 <p className="text-xs text-white/50">Today</p>
@@ -1257,10 +1342,10 @@ export const AdminDashboard: React.FC = () => {
 
         <div className="p-4 sm:p-6 lg:p-12">
         {activeTab === 'overview' && (
-          <section className="space-y-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <h1 className="text-2xl sm:text-3xl font-black text-mango-dark">Overview</h1>
-              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <section className="space-y-5 sm:space-y-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h1 className="text-xl sm:text-3xl font-black tracking-tight text-mango-dark">Overview</h1>
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
                 {canUseDevelopmentFallbacks() && (
                   <button 
                     onClick={handleSeedDatabase}
@@ -1269,62 +1354,66 @@ export const AdminDashboard: React.FC = () => {
                     Seed Database
                   </button>
                 )}
-                <div className="text-sm text-gray-400 font-medium">{formatLongDate(new Date())}</div>
+                <div className="text-xs text-gray-400 font-semibold sm:text-sm sm:font-medium">{formatLongDate(new Date())}</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                  <ShoppingBag size={24} />
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 sm:mb-4 sm:h-11 sm:w-11">
+                  <ShoppingBag size={20} className="sm:hidden" />
+                  <ShoppingBag size={24} className="hidden sm:block" />
                 </div>
-                <p className="text-sm font-medium text-gray-400">Today's Orders</p>
-                <h3 className="mt-2 text-3xl font-black text-mango-dark">{todayOrders.length}</h3>
+                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Today's Orders</p>
+                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{todayOrders.length}</h3>
               </div>
-              <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                  <Package size={24} />
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 sm:mb-4 sm:h-11 sm:w-11">
+                  <Package size={20} className="sm:hidden" />
+                  <Package size={24} className="hidden sm:block" />
                 </div>
-                <p className="text-sm font-medium text-gray-400">Total Orders</p>
-                <h3 className="mt-2 text-3xl font-black text-mango-dark">{totalOrders}</h3>
+                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Total Orders</p>
+                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{totalOrders}</h3>
               </div>
-              <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-green-600">
-                  <TrendingUp size={24} />
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-green-50 text-green-600 sm:mb-4 sm:h-11 sm:w-11">
+                  <TrendingUp size={20} className="sm:hidden" />
+                  <TrendingUp size={24} className="hidden sm:block" />
                 </div>
-                <p className="text-sm font-medium text-gray-400">Today's Revenue</p>
-                <h3 className="mt-2 text-3xl font-black text-mango-dark">{formatCurrency(todayRevenue)}</h3>
+                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Today's Revenue</p>
+                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{formatCurrency(todayRevenue)}</h3>
               </div>
-              <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
-                  <TrendingUp size={24} />
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 sm:mb-4 sm:h-11 sm:w-11">
+                  <TrendingUp size={20} className="sm:hidden" />
+                  <TrendingUp size={24} className="hidden sm:block" />
                 </div>
-                <p className="text-sm font-medium text-gray-400">Total Revenue</p>
-                <h3 className="mt-2 text-3xl font-black text-mango-dark">{formatCurrency(totalRevenue)}</h3>
+                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Total Revenue</p>
+                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{formatCurrency(totalRevenue)}</h3>
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[28px] sm:p-7">
+              <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div>
-                  <h3 className="text-lg font-bold">Recent Orders</h3>
-                  <p className="mt-1 text-sm text-gray-500">Latest orders with the key details only.</p>
+                  <h3 className="text-sm font-black text-mango-dark sm:text-lg sm:font-bold">Recent Orders</h3>
+                  <p className="mt-1 text-[13px] text-gray-500 sm:text-sm">Latest orders with the key details only.</p>
                 </div>
-                <div className="rounded-full bg-orange-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-mango-orange">
+                <div className="inline-flex w-fit rounded-full bg-orange-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-mango-orange sm:px-4 sm:py-2 sm:text-xs sm:font-bold">
                   {attentionOrders} require attention
                 </div>
               </div>
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="flex flex-col gap-3 rounded-2xl bg-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2 sm:space-y-3">
+                {recentOrders.map((order, index) => (
+                  <div key={order.id} className={`flex flex-col gap-2 rounded-2xl bg-gray-50 px-4 py-3 sm:gap-3 sm:py-4 sm:flex-row sm:items-center sm:justify-between ${index >= 1 ? 'hidden sm:flex' : ''}`}>
                     <div className="min-w-0">
-                      <p className="font-bold text-mango-dark">#{order.id.slice(-6).toUpperCase()} · {order.customerName}</p>
-                      <p className="mt-1 text-xs text-gray-500">{formatOrderTimestamp(new Date(order.createdAt))}</p>
-                      <p className="mt-1 text-xs text-gray-500">Phone: {order.customerPhone}</p>
-                      <p className="mt-1 text-xs text-gray-500">Address: {order.deliveryAddress}</p>
+                      <p className="truncate text-[13px] font-black text-mango-dark sm:text-base sm:font-bold">#{order.id.slice(-6).toUpperCase()} · {order.customerName}</p>
+                      <p className="mt-1 text-[11px] font-semibold text-gray-500 sm:text-xs sm:font-normal">{formatOrderTimestamp(new Date(order.createdAt))}</p>
+                      <p className="mt-1 hidden text-xs text-gray-500 sm:block">Phone: {order.customerPhone}</p>
+                      <p className="mt-1 hidden text-xs text-gray-500 sm:block">Address: {order.deliveryAddress}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-mango-dark">{formatCurrency(order.total)}</p>
+                      <p className="text-[13px] font-black text-mango-dark sm:text-base sm:font-bold">{formatCurrency(order.total)}</p>
                       <p className={`text-[11px] font-bold uppercase tracking-wider ${order.status === 'Delivered' ? 'text-green-600' : order.status === 'Out for Delivery' ? 'text-blue-600' : order.status === 'Confirmed' ? 'text-mango-yellow' : order.status === 'Cancelled' ? 'text-red-500' : 'text-gray-500'}`}>
                         {order.status}
                       </p>
@@ -1359,21 +1448,21 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-              <div className="relative">
+            <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-2 sm:gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="relative min-w-0">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
                   value={productSearchQuery}
                   onChange={(e) => setProductSearchQuery(e.target.value)}
                   placeholder="Search by product name"
-                  className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                  className="w-full rounded-2xl border border-gray-200 bg-white py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
                 />
               </div>
               <select
                 value={productStatusFilter}
                 onChange={(e) => setProductStatusFilter(e.target.value as 'all' | 'inSeason' | 'outOfSeason')}
-                className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                className="min-w-0 rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
               >
                 <option value="all">All statuses</option>
                 <option value="inSeason">In season</option>
@@ -1548,21 +1637,21 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_220px_180px]">
-              <div className="relative">
+            <div className="grid grid-cols-[minmax(0,1fr)_140px_130px] gap-2 sm:gap-3 sm:grid-cols-[minmax(0,1fr)_220px_180px]">
+              <div className="relative min-w-0">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
                   value={orderSearchQuery}
                   onChange={(e) => setOrderSearchQuery(e.target.value)}
                   placeholder="Search by order ID, customer name, or phone"
-                  className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                  className="w-full rounded-2xl border border-gray-200 bg-white py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
                 />
               </div>
               <select
                 value={orderStatusFilter}
                 onChange={(e) => setOrderStatusFilter(e.target.value as 'all' | OrderStatus)}
-                className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                className="min-w-0 rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
               >
                 <option value="all">All statuses</option>
                 <option value="Pending">Pending</option>
@@ -1575,7 +1664,7 @@ export const AdminDashboard: React.FC = () => {
                 type="date"
                 value={orderDateFilter}
                 onChange={(e) => setOrderDateFilter(e.target.value)}
-                className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                className="min-w-0 rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
               />
             </div>
 
@@ -1685,9 +1774,9 @@ export const AdminDashboard: React.FC = () => {
               </table>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:hidden">
+            <div className="grid grid-cols-1 gap-3 md:hidden">
               {orders.map((order) => (
-                <div key={order.id} className={`rounded-3xl border border-gray-100 bg-white p-4 shadow-sm ${order.status === 'Pending' || order.status === 'Cancelled' ? 'ring-1 ring-orange-200' : ''}`}>
+                <div key={order.id} className={`rounded-3xl border border-gray-100 bg-white p-3 shadow-sm ${order.status === 'Pending' || order.status === 'Cancelled' ? 'ring-1 ring-orange-200' : ''}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Order ID</p>
@@ -1699,30 +1788,30 @@ export const AdminDashboard: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="mt-4 rounded-2xl bg-gray-50 px-4 py-3">
+                  <div className="mt-3 rounded-2xl bg-gray-50 px-3 py-2.5">
                     <p className="font-bold text-mango-dark">Name: {order.customerName}</p>
-                    <p className="text-sm text-gray-500">Phone: {order.customerPhone}</p>
-                    <p className="mt-1 text-sm text-gray-500">Address: {order.deliveryAddress}</p>
+                    <p className="text-[13px] text-gray-500">Phone: {order.customerPhone}</p>
+                    <p className="mt-0.5 text-[13px] text-gray-500">Address: {order.deliveryAddress}</p>
                   </div>
 
-                  <div className="mt-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Items</p>
+                  <div className="mt-3">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Items</p>
                     <div className="flex flex-wrap gap-2">
                       {order.items.map((item, i) => (
-                        <div key={i} className="rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-600">
+                        <div key={i} className="rounded-full bg-gray-100 px-3 py-1 text-[12px] text-gray-600">
                           {item.quantity}x {item.productName} ({item.variant})
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-2xl bg-gray-50 px-3 py-3">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Delivery</p>
                       <p className="mt-1 font-semibold text-mango-dark">{order.deliveryArea}</p>
                       <p className="text-xs text-gray-500">{order.deliveryDate}</p>
                     </div>
-                    <div className="rounded-2xl bg-gray-50 px-3 py-3">
+                    <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Payment</p>
                       <p className="mt-1 font-semibold text-mango-dark">{order.paymentMethod}</p>
                       <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
@@ -1732,14 +1821,14 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   {order.paymentMethod !== 'Cash on Delivery' && (
-                    <div className="mt-4 rounded-2xl bg-orange-50/50 px-4 py-3 text-sm text-gray-600">
+                    <div className="mt-3 rounded-2xl bg-orange-50/50 px-3 py-2.5 text-[13px] text-gray-600">
                       <p><span className="font-bold text-mango-dark">Sender:</span> {order.paymentSenderPhone || 'Not submitted'}</p>
                       <p className="mt-1"><span className="font-bold text-mango-dark">Txn ID:</span> {order.paymentTransactionId || 'Not submitted'}</p>
                       <p className="mt-1"><span className="font-bold text-mango-dark">Confirmation:</span> {formatCurrency(order.paymentConfirmationAmount ?? 0)}</p>
                     </div>
                   )}
 
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-3 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Total</p>
                       <p className="text-lg font-black text-mango-dark">{formatCurrency(order.total)}</p>
@@ -1748,7 +1837,7 @@ export const AdminDashboard: React.FC = () => {
                       <select
                         value={order.status}
                         onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
-                        className="max-w-[170px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
+                        className="max-w-[160px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
                       >
                         <option value="Pending">Pending</option>
                         <option value="Confirmed">Confirmed</option>
@@ -1759,7 +1848,7 @@ export const AdminDashboard: React.FC = () => {
                       <select
                         value={order.paymentStatus}
                         onChange={(e) => handleUpdatePaymentStatus(order.id, e.target.value as PaymentStatus)}
-                        className="max-w-[170px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
+                        className="max-w-[160px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
                       >
                         <option value="Not Required">Not Required</option>
                         <option value="Awaiting Verification">Awaiting Verification</option>

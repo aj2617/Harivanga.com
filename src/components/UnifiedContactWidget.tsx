@@ -136,8 +136,15 @@ export const UnifiedContactWidget: React.FC = () => {
     return null;
   }
 
+  const needsBottomClearance = pathname.startsWith('/cart');
+
   return (
-    <div className="fixed bottom-4 right-4 z-[92] sm:bottom-5 sm:right-5">
+    <div
+      className={[
+        'fixed right-4 z-[92] sm:right-5',
+        needsBottomClearance ? 'bottom-24 lg:bottom-5' : 'bottom-4 sm:bottom-5',
+      ].join(' ')}
+    >
       {isChatOpen ? (
         <div className="mb-4 flex w-[min(calc(100vw-2rem),21rem)] flex-col overflow-hidden rounded-[1.6rem] border border-[#f0d9bc] bg-[linear-gradient(180deg,#fffaf3_0%,#fff4ea_100%)] shadow-[0_28px_70px_rgba(90,47,0,0.2)]">
           <div className="flex items-start justify-between gap-3 border-b border-[#f2dfc8] bg-[linear-gradient(135deg,#ff9f5a_0%,#ff6b35_58%,#d85927_100%)] px-4 py-3.5 text-white">
