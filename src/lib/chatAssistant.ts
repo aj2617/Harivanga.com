@@ -1,4 +1,4 @@
-import { hasSupabaseConfig } from './env';
+import { hasSupabaseConfig, supabaseUrl } from './env';
 
 export type ChatAssistantRole = 'user' | 'assistant';
 
@@ -73,13 +73,13 @@ function isChatAssistantError(data: ChatAssistantSuccess | ChatAssistantError | 
 }
 
 function getChatFunctionUrl() {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
+  const resolvedSupabaseUrl = supabaseUrl.replace(/\/$/, '');
 
-  if (!supabaseUrl) {
+  if (!resolvedSupabaseUrl) {
     throw new Error('Missing VITE_SUPABASE_URL. The Gemini assistant needs Supabase to reach the server function.');
   }
 
-  return `${supabaseUrl}/functions/v1/chat-assistant`;
+  return `${resolvedSupabaseUrl}/functions/v1/chat-assistant`;
 }
 
 function getBrowserGeminiApiKey() {

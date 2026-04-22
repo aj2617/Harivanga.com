@@ -1,15 +1,15 @@
 import { createClient, type User } from '@supabase/supabase-js';
 import { Order, OrderPaymentMethod, OrderStatus, Product, ProductVariant, UserProfile } from './types';
-import { hasSupabaseConfig } from './lib/env';
+import { hasSupabaseConfig, supabaseAnonKey, supabaseUrl } from './lib/env';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://example.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'supabase-anon-key';
+const resolvedSupabaseUrl = supabaseUrl || 'https://example.supabase.co';
+const resolvedSupabaseAnonKey = supabaseAnonKey || 'supabase-anon-key';
 
 if (!hasSupabaseConfig) {
   console.warn('Supabase environment variables are missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(resolvedSupabaseUrl, resolvedSupabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

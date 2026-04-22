@@ -1,4 +1,5 @@
 import { Product, ProductVariant } from '../types';
+import { supabaseAnonKey, supabaseUrl as resolvedSupabaseUrl } from './env';
 
 type ProductRow = {
   id: string;
@@ -29,8 +30,7 @@ const PRODUCT_DETAIL_SELECT =
   'id,name,description,image,images,price_per_kg,stock,variety,origin,taste_profile,is_available,variants';
 
 function getSupabaseRestConfig() {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const supabaseUrl = resolvedSupabaseUrl.replace(/\/$/, '');
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Supabase environment variables are missing.');
