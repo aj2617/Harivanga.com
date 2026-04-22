@@ -49,5 +49,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: cpanel
-          force_orphan: true
-
+          # Keep history so cPanel "Update from Remote" can fast-forward cleanly.
+          force_orphan: false
