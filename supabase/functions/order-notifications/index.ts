@@ -202,6 +202,29 @@ Deno.serve(async (request) => {
   const results: Record<string, unknown> = {};
   let emailSent = false;
 
+  if (notifyEmailTo) {
+    const upsertAttempt = await supabaseRest<unknown>(`${supabaseUrl}/rest/v1/order_notifications`, serviceRoleKey, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal,resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        order_id: orderId,
+        email_sent: false,
+        email_to: notifyEmailTo ?? null,
+      }),
+    });
+
+    if (!upsertAttempt.ok && upsertAttempt.status !== 409) {
+      results.record_attempt = { ok: false, status: upsertAttempt.status, body: upsertAttempt.raw };
+    } else {
+      results.record_attempt = { ok: true, status: upsertAttempt.status };
+    }
+  } else {
+    results.record_attempt = { skipped: true, reason: 'Missing NOTIFY_ADMIN_EMAIL.' };
+  }
+
   if (resendKey && notifyEmailTo && notifyEmailFrom) {
     const emailResult = await sendEmailViaResend({
       apiKey: resendKey,
@@ -227,29 +250,25 @@ Deno.serve(async (request) => {
     );
   }
 
-  const insert = await supabaseRest<unknown>(`${supabaseUrl}/rest/v1/order_notifications`, serviceRoleKey, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({
-      order_id: orderId,
-      email_sent: emailSent,
-      email_to: notifyEmailTo ?? null,
-    }),
-  });
-
-  if (!insert.ok && insert.status !== 409) {
-    return jsonResponse(
-      {
-        ok: true,
-        warning: 'Notification sent, but failed to record order_notifications row.',
-        results,
+  const markSent = await supabaseRest<unknown>(
+    `${supabaseUrl}/rest/v1/order_notifications?order_id=eq.${orderId}`,
+    serviceRoleKey,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
       },
-      200,
-      { 'x-upstream-status': String(insert.status) }
-    );
+      body: JSON.stringify({
+        email_sent: true,
+      }),
+    }
+  );
+
+  if (!markSent.ok) {
+    results.record_sent = { ok: false, status: markSent.status, body: markSent.raw };
+  } else {
+    results.record_sent = { ok: true, status: markSent.status };
   }
 
   return jsonResponse({ ok: true, results });
