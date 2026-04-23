@@ -40,7 +40,7 @@ This is a static site (Vite build). Shared hosting cannot run the Supabase Edge 
 
 If you use the AI assistant in production, deploy the Supabase Edge Function and set `GEMINI_API_KEY` in Supabase secrets (do **not** use `VITE_GEMINI_API_KEY` in production).
 
-## Order Notifications (Email / WhatsApp)
+## Order Notifications (Email)
 
 This repo includes a Supabase Edge Function that can notify you when a new order is placed. The checkout page calls it after the order is created.
 
@@ -48,12 +48,11 @@ This repo includes a Supabase Edge Function that can notify you when a new order
    - In Supabase SQL Editor, re-run `supabase/schema.sql` (safe to run multiple times).
 2. Deploy the function:
    - `supabase functions deploy order-notifications`
-3. Set required secrets in Supabase (choose 1+ channels):
-   - For Email (Resend): `RESEND_API_KEY`, `NOTIFY_ADMIN_EMAIL`, `NOTIFY_EMAIL_FROM`
-   - For WhatsApp (Twilio): `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `NOTIFY_WHATSAPP_TO`
+3. Set required secrets in Supabase:
+   - Email (Resend): `RESEND_API_KEY`, `NOTIFY_ADMIN_EMAIL`, `NOTIFY_EMAIL_FROM`
    - Service role key: Supabase usually injects `SUPABASE_SERVICE_ROLE_KEY` automatically into Edge Functions. If it's missing in your project, add a secret named `SERVICE_ROLE_KEY` (used only inside the Edge Function to load the order + record delivery).
 
-If no channel is configured, the order still completes, but the notification attempt will fail (and a warning is logged in the browser console).
+If email is not configured, the order still completes, but the notification attempt will fail (and a warning is logged in the browser console).
 
 ## GitHub -> Namecheap cPanel Deploy (no Node.js on server)
 

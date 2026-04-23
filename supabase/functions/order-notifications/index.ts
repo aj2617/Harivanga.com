@@ -128,36 +128,6 @@ async function sendEmailViaResend(params: { apiKey: string; from: string; to: st
   return { ok: response.ok, status: response.status, body: payloadText };
 }
 
-function createBasicAuthHeader(username: string, password: string) {
-  const token = btoa(`${username}:${password}`);
-  return `Basic ${token}`;
-}
-
-async function sendWhatsAppViaTwilio(params: {
-  accountSid: string;
-  authToken: string;
-  from: string;
-  to: string;
-  body: string;
-}) {
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${params.accountSid}/Messages.json`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: createBasicAuthHeader(params.accountSid, params.authToken),
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      From: params.from.startsWith('whatsapp:') ? params.from : `whatsapp:${params.from}`,
-      To: params.to.startsWith('whatsapp:') ? params.to : `whatsapp:${params.to}`,
-      Body: params.body,
-    }),
-  });
-
-  const payloadText = await response.text();
-  return { ok: response.ok, status: response.status, body: payloadText };
-}
-
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -192,8 +162,8 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'A valid orderId (uuid) is required.' }, 400);
   }
 
-  const existing = await supabaseRest<Array<{ order_id: string; email_sent: boolean; whatsapp_sent: boolean }>>(
-    `${supabaseUrl}/rest/v1/order_notifications?order_id=eq.${orderId}&select=order_id,email_sent,whatsapp_sent&limit=1`,
+  const existing = await supabaseRest<Array<{ order_id: string; email_sent: boolean }>>(
+    `${supabaseUrl}/rest/v1/order_notifications?order_id=eq.${orderId}&select=order_id,email_sent&limit=1`,
     serviceRoleKey
   );
 
@@ -203,7 +173,7 @@ Deno.serve(async (request) => {
 
   if (Array.isArray(existing.json) && existing.json.length > 0) {
     const row = existing.json[0];
-    if (row.email_sent || row.whatsapp_sent) {
+    if (row.email_sent) {
       return jsonResponse({ ok: true, alreadyNotified: true });
     }
   }
@@ -229,14 +199,8 @@ Deno.serve(async (request) => {
   const notifyEmailTo = Deno.env.get('NOTIFY_ADMIN_EMAIL');
   const notifyEmailFrom = Deno.env.get('NOTIFY_EMAIL_FROM');
 
-  const twilioSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-  const twilioToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-  const twilioFrom = Deno.env.get('TWILIO_WHATSAPP_FROM');
-  const notifyWhatsAppTo = Deno.env.get('NOTIFY_WHATSAPP_TO');
-
   const results: Record<string, unknown> = {};
   let emailSent = false;
-  let whatsappSent = false;
 
   if (resendKey && notifyEmailTo && notifyEmailFrom) {
     const emailResult = await sendEmailViaResend({
@@ -249,28 +213,14 @@ Deno.serve(async (request) => {
     results.email = emailResult;
     emailSent = emailResult.ok;
   } else {
-    results.email = { skipped: true };
+    results.email = { skipped: true, reason: 'Missing RESEND_API_KEY, NOTIFY_ADMIN_EMAIL, or NOTIFY_EMAIL_FROM.' };
   }
 
-  if (twilioSid && twilioToken && twilioFrom && notifyWhatsAppTo) {
-    const waResult = await sendWhatsAppViaTwilio({
-      accountSid: twilioSid,
-      authToken: twilioToken,
-      from: twilioFrom,
-      to: notifyWhatsAppTo,
-      body: text.slice(0, 1500),
-    });
-    results.whatsapp = waResult;
-    whatsappSent = waResult.ok;
-  } else {
-    results.whatsapp = { skipped: true };
-  }
-
-  if (!emailSent && !whatsappSent) {
+  if (!emailSent) {
     return jsonResponse(
       {
         ok: false,
-        error: 'No notification channel is configured (or all sends failed).',
+        error: 'Email notification is not configured (or send failed).',
         results,
       },
       502
@@ -286,9 +236,7 @@ Deno.serve(async (request) => {
     body: JSON.stringify({
       order_id: orderId,
       email_sent: emailSent,
-      whatsapp_sent: whatsappSent,
       email_to: notifyEmailTo ?? null,
-      whatsapp_to: notifyWhatsAppTo ?? null,
     }),
   });
 
