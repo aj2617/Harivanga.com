@@ -61,6 +61,17 @@ create table if not exists public.orders (
   user_id uuid references auth.users (id) on delete set null
 );
 
+create table if not exists public.order_notifications (
+  order_id uuid primary key references public.orders (id) on delete cascade,
+  email_sent boolean not null default false,
+  whatsapp_sent boolean not null default false,
+  email_to text,
+  whatsapp_to text,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.order_notifications enable row level security;
+
 alter table public.orders add column if not exists customer_phone_normalized text;
 alter table public.orders add column if not exists delivery_division text;
 alter table public.orders add column if not exists delivery_district text;

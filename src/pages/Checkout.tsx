@@ -380,6 +380,17 @@ export const Checkout: React.FC = () => {
         ...orderBase,
       };
 
+      if (hasSupabaseConfig && createdOrderId) {
+        void (async () => {
+          const { error } = await supabase.functions.invoke('order-notifications', {
+            body: { orderId: createdOrderId },
+          });
+          if (error) {
+            console.warn('Order notification failed', error);
+          }
+        })();
+      }
+
       clearCart();
       saveRecentOrder(savedOrder);
       navigate(`/order-confirmation/${createdOrderId}`);

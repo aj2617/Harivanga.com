@@ -1,2 +1,5 @@
 [functions.chat-assistant]
 verify_jwt = false
+
+[functions.order-notifications]
+verify_jwt = false
