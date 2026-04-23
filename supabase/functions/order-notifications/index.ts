@@ -141,6 +141,7 @@ Deno.serve(async (request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY');
 
   if (!supabaseUrl || !serviceRoleKey) {
+    console.error('order-notifications: missing SUPABASE_URL or service role key');
     return jsonResponse(
       {
         error:
@@ -162,12 +163,19 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'A valid orderId (uuid) is required.' }, 400);
   }
 
+  console.log('order-notifications: invoked', { orderId: shortOrderId(orderId) });
+
   const existing = await supabaseRest<Array<{ order_id: string; email_sent: boolean }>>(
     `${supabaseUrl}/rest/v1/order_notifications?order_id=eq.${orderId}&select=order_id,email_sent&limit=1`,
     serviceRoleKey
   );
 
   if (!existing.ok) {
+    console.error('order-notifications: failed to check notification status', {
+      orderId: shortOrderId(orderId),
+      status: existing.status,
+      body: existing.raw?.slice(0, 300),
+    });
     return jsonResponse({ error: 'Failed to check notification status.' }, 502, { 'x-upstream-status': String(existing.status) });
   }
 
@@ -184,6 +192,11 @@ Deno.serve(async (request) => {
   );
 
   if (!orderLookup.ok) {
+    console.error('order-notifications: failed to load order', {
+      orderId: shortOrderId(orderId),
+      status: orderLookup.status,
+      body: orderLookup.raw?.slice(0, 300),
+    });
     return jsonResponse({ error: 'Failed to load order.' }, 502, { 'x-upstream-status': String(orderLookup.status) });
   }
 
@@ -202,6 +215,12 @@ Deno.serve(async (request) => {
   const results: Record<string, unknown> = {};
   let emailSent = false;
 
+  console.log('order-notifications: email config', {
+    hasResendKey: Boolean(resendKey),
+    hasNotifyEmailTo: Boolean(notifyEmailTo),
+    hasNotifyEmailFrom: Boolean(notifyEmailFrom),
+  });
+
   if (notifyEmailTo) {
     const upsertAttempt = await supabaseRest<unknown>(`${supabaseUrl}/rest/v1/order_notifications`, serviceRoleKey, {
       method: 'POST',
@@ -217,6 +236,11 @@ Deno.serve(async (request) => {
     });
 
     if (!upsertAttempt.ok && upsertAttempt.status !== 409) {
+      console.error('order-notifications: failed to upsert notification row', {
+        orderId: shortOrderId(orderId),
+        status: upsertAttempt.status,
+        body: upsertAttempt.raw?.slice(0, 300),
+      });
       results.record_attempt = { ok: false, status: upsertAttempt.status, body: upsertAttempt.raw };
     } else {
       results.record_attempt = { ok: true, status: upsertAttempt.status };
@@ -235,7 +259,14 @@ Deno.serve(async (request) => {
     });
     results.email = emailResult;
     emailSent = emailResult.ok;
+    console.log('order-notifications: email send result', {
+      orderId: shortOrderId(orderId),
+      ok: emailResult.ok,
+      status: emailResult.status,
+      body: emailResult.body?.slice(0, 300),
+    });
   } else {
+    console.warn('order-notifications: email send skipped (missing config)', { orderId: shortOrderId(orderId) });
     results.email = { skipped: true, reason: 'Missing RESEND_API_KEY, NOTIFY_ADMIN_EMAIL, or NOTIFY_EMAIL_FROM.' };
   }
 
@@ -266,6 +297,11 @@ Deno.serve(async (request) => {
   );
 
   if (!markSent.ok) {
+    console.error('order-notifications: failed to mark email_sent', {
+      orderId: shortOrderId(orderId),
+      status: markSent.status,
+      body: markSent.raw?.slice(0, 300),
+    });
     results.record_sent = { ok: false, status: markSent.status, body: markSent.raw };
   } else {
     results.record_sent = { ok: true, status: markSent.status };

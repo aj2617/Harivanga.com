@@ -382,12 +382,15 @@ export const Checkout: React.FC = () => {
 
       if (hasSupabaseConfig && createdOrderId) {
         void (async () => {
-          const { error } = await supabase.functions.invoke('order-notifications', {
+          const { data, error } = await supabase.functions.invoke('order-notifications', {
             body: { orderId: createdOrderId },
           });
           if (error) {
             console.warn('Order notification failed', error);
+            return;
           }
+
+          console.info('Order notification result', data);
         })();
       }
 
