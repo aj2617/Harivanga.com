@@ -15,7 +15,7 @@ import { formatLongDate, formatOrderTimestamp, formatShortMonthDay } from '../li
 import { 
   LayoutDashboard, Package, ShoppingBag, TrendingUp, 
   Plus, Edit2, Trash2,
-  Search, Settings as SettingsIcon, House, Lock, LogOut
+  Search, Settings as SettingsIcon, House, Lock, LogOut, Eye, EyeOff
 } from 'lucide-react';
 import { canUseDevelopmentFallbacks, hasSupabaseConfig } from '../lib/env';
 
@@ -24,6 +24,9 @@ const AdminProductModal = lazy(() =>
 );
 const AdminSettingsPanel = lazy(() =>
   import('../features/admin/components/AdminSettingsPanel').then((module) => ({ default: module.AdminSettingsPanel }))
+);
+const AdminChangePasswordPanel = lazy(() =>
+  import('../features/admin/components/AdminChangePasswordPanel').then((module) => ({ default: module.AdminChangePasswordPanel }))
 );
 
 const LOCAL_DEV_ADMIN_EMAIL = 'admin@local';
@@ -267,7 +270,7 @@ const buildProductForm = (product: Product): Partial<Product> => {
 };
 
 export const AdminDashboard: React.FC = () => {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading, user } = useAuth();
   const navigate = useNavigate();
   const localHost = isLocalDevHost();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -289,6 +292,7 @@ export const AdminDashboard: React.FC = () => {
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : '');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const [adminResetMessage, setAdminResetMessage] = useState<string | null>(null);
   const [isAdminResetting, setIsAdminResetting] = useState(false);
@@ -1130,13 +1134,23 @@ export const AdminDashboard: React.FC = () => {
                   <label className="text-xs font-black uppercase tracking-[0.24em] text-[#6d7ea5]">
                     Master Password
                   </label>
-                  <input
-                    type="password"
-                    required
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="mt-2.5 h-12 w-full rounded-[14px] border border-white/8 bg-[#dfe7f5] px-4 text-center text-sm font-bold tracking-[0.2em] text-black outline-none transition placeholder:text-black/35 focus:border-[#ff6b6d] focus:ring-4 focus:ring-[#ff4d4f]/10"
-                  />
+                  <div className="relative mt-2.5">
+                    <input
+                      type={showAdminPassword ? 'text' : 'password'}
+                      required
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      className="h-12 w-full rounded-[14px] border border-white/8 bg-[#dfe7f5] px-4 pr-12 text-center text-sm font-bold tracking-[0.2em] text-black outline-none transition placeholder:text-black/35 focus:border-[#ff6b6d] focus:ring-4 focus:ring-[#ff4d4f]/10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword((current) => !current)}
+                      aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-black/60 transition hover:bg-black/5 hover:text-black"
+                    >
+                      {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 {adminLoginError && (
@@ -1897,17 +1911,28 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {activeTab === 'settings' && (
-          <Suspense fallback={<div className="rounded-3xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500">Loading settings...</div>}>
-            <AdminSettingsPanel
-              promoStories={settingsForm.promoStories}
-              savedMessage={settingsSavedMessage}
-              onPromoStoryChange={handlePromoStoryChange}
-              onAddPromoStory={handleAddPromoStory}
-              onRemovePromoStory={handleRemovePromoStory}
-              onReset={handleResetSettings}
-              onSubmit={handleSaveSettings}
-            />
-          </Suspense>
+          <div className="space-y-6">
+            <Suspense fallback={<div className="rounded-3xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500">Loading settings...</div>}>
+              <AdminSettingsPanel
+                promoStories={settingsForm.promoStories}
+                savedMessage={settingsSavedMessage}
+                onPromoStoryChange={handlePromoStoryChange}
+                onAddPromoStory={handleAddPromoStory}
+                onRemovePromoStory={handleRemovePromoStory}
+                onReset={handleResetSettings}
+                onSubmit={handleSaveSettings}
+              />
+            </Suspense>
+
+            <Suspense fallback={<div className="rounded-3xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500">Loading security...</div>}>
+              <AdminChangePasswordPanel
+                email={user?.email ?? adminEmail}
+                disabled={isLocalDevBypass}
+                disabledMessage="Password change is disabled in local test admin mode. Sign in with a real Supabase admin account to update your password."
+                onAfterSuccess={() => navigate('/admin')}
+              />
+            </Suspense>
+          </div>
         )}
         </div>
       </main>

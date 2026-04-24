@@ -2,6 +2,8 @@ node_modules/
 build/
 dist/
 coverage/
+.npm-cache/
+dist*.zip
 .DS_Store
 *.log
 .env*
