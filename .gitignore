@@ -10,3 +10,8 @@ dist*.zip
 !.env.example
 supabase/.temp/
 .vscode/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
