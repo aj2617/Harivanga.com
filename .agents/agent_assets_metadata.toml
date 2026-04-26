@@ -1,0 +1,44 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "x4J8M-uAYJQXUN53zipoq"
+uri = "file://artifacts/mockup-sandbox/public/images/clean-minimal-hero.png"
+type = "image"
+title = "Editorial mango hero image"
+
+[[generated]]
+id = "YKBEVsfkACw4GAGoHOyyX"
+uri = "file://artifacts/mockup-sandbox/public/images/clean-minimal-product-1.png"
+type = "image"
+title = "Minimalist mango product photo"
+
+[[generated]]
+id = "isk-kqF1BhFL_PoB0c8iB"
+uri = "file://artifacts/mockup-sandbox/public/images/clean-minimal-product-2.png"
+type = "image"
+title = "Box of premium mangoes"
+
+[[generated]]
+id = "ZWkHTUu2d0tOu9w-690Oe"
+uri = "file://artifacts/mockup-sandbox/public/images/clean-minimal-story.png"
+type = "image"
+title = "Mango orchard editorial"
+
+[[generated]]
+id = "HkwEUhQ0fRVivW1-oYXPr"
+uri = "file://artifacts/mockup-sandbox/public/images/mango-hero.png"
+type = "image"
+title = "Mango hero illustration"
+
+[[generated]]
+id = "Oxzte38V3zQuIZC1GgpOC"
+uri = "file://artifacts/mockup-sandbox/public/images/harivanga-box.png"
+type = "image"
+title = "Harivanga Mango Box"
+
+[[generated]]
+id = "N1e5m5hJ4V3Ow_7FyW1C_"
+uri = "file://artifacts/mockup-sandbox/public/images/harivanga-premium.png"
+type = "image"
+title = "Harivanga Mango Premium"
