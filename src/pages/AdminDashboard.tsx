@@ -9,7 +9,7 @@ import { notifyStorefrontProductsChanged } from '../lib/storefrontSync';
 import { optimizeProductUpload } from '../lib/imageOptimization';
 import { getThumbnailImageSrc } from '../lib/imageSources';
 import { ADMIN_SETTINGS_KEY, LEGACY_ADMIN_SETTINGS_KEY, notifyAdminSettingsChanged } from '../lib/adminSettings';
-import type { PromoStoryInput } from '../features/admin/components/AdminSettingsPanel';
+import type { PromoStoryInput, CustomerReviewInput } from '../features/admin/components/AdminSettingsPanel';
 import { BrandLogo } from '../components/BrandLogo';
 import { formatLongDate, formatOrderTimestamp, formatShortMonthDay } from '../lib/dates';
 import { 
@@ -290,6 +290,8 @@ export const AdminDashboard: React.FC = () => {
   const [orderDateFilter, setOrderDateFilter] = useState('');
   const [settingsForm, setSettingsForm] = useState<AdminSettings>(loadSettings);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<CustomerReviewInput[]>([]);
+  const [reviewsSavedMessage, setReviewsSavedMessage] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : '');
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminPassword, setShowAdminPassword] = useState(false);
@@ -341,6 +343,101 @@ export const AdminDashboard: React.FC = () => {
     const timeout = window.setTimeout(() => setSettingsSavedMessage(null), 2500);
     return () => window.clearTimeout(timeout);
   }, [settingsSavedMessage]);
+
+  useEffect(() => {
+    if (!reviewsSavedMessage) return;
+    const timeout = window.setTimeout(() => setReviewsSavedMessage(null), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [reviewsSavedMessage]);
+
+  useEffect(() => {
+    if (!isAdmin || !hasSupabaseConfig) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('customer_reviews')
+          .select('id, customer_name, location, rating, review_text, avatar_initials, is_featured')
+          .order('created_at', { ascending: false });
+        if (error || !data || cancelled) return;
+        setReviews(
+          (data as Array<{
+            id: string; customer_name: string; location: string; rating: number;
+            review_text: string; avatar_initials: string; is_featured: boolean;
+          }>).map((row) => ({
+            id: row.id,
+            customerName: row.customer_name,
+            location: row.location,
+            rating: row.rating,
+            reviewText: row.review_text,
+            avatarInitials: row.avatar_initials,
+            isFeatured: row.is_featured,
+          }))
+        );
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin]);
+
+  const handleAddReview = async (review: Omit<CustomerReviewInput, 'id'>) => {
+    if (hasSupabaseConfig && isAdmin) {
+      try {
+        const { data, error } = await supabase
+          .from('customer_reviews')
+          .insert([{
+            customer_name: review.customerName,
+            location: review.location,
+            rating: review.rating,
+            review_text: review.reviewText,
+            avatar_initials: review.avatarInitials,
+            is_featured: review.isFeatured,
+          }])
+          .select('id, customer_name, location, rating, review_text, avatar_initials, is_featured')
+          .single();
+        if (error) throw error;
+        if (data) {
+          const mapped: CustomerReviewInput = {
+            id: (data as { id: string }).id,
+            customerName: review.customerName,
+            location: review.location,
+            rating: review.rating,
+            reviewText: review.reviewText,
+            avatarInitials: review.avatarInitials,
+            isFeatured: review.isFeatured,
+          };
+          setReviews((prev) => [mapped, ...prev]);
+          setReviewsSavedMessage('Review added');
+          return;
+        }
+      } catch { /* fallback to local */ }
+    }
+    const localReview: CustomerReviewInput = { ...review, id: `local-${Date.now()}` };
+    setReviews((prev) => [localReview, ...prev]);
+    setReviewsSavedMessage('Review added');
+  };
+
+  const handleDeleteReview = async (id: string) => {
+    if (hasSupabaseConfig && isAdmin && !id.startsWith('local-')) {
+      try {
+        await supabase.from('customer_reviews').delete().eq('id', id);
+      } catch { /* ignore */ }
+    }
+    setReviews((prev) => prev.filter((r) => r.id !== id));
+    setReviewsSavedMessage('Review removed');
+  };
+
+  const handleToggleReviewFeatured = async (id: string) => {
+    const review = reviews.find((r) => r.id === id);
+    if (!review) return;
+    const newValue = !review.isFeatured;
+    if (hasSupabaseConfig && isAdmin && !id.startsWith('local-')) {
+      try {
+        await supabase.from('customer_reviews').update({ is_featured: newValue }).eq('id', id);
+      } catch { /* ignore */ }
+    }
+    setReviews((prev) => prev.map((r) => r.id === id ? { ...r, isFeatured: newValue } : r));
+    setReviewsSavedMessage(newValue ? 'Review shown' : 'Review hidden');
+  };
 
   const loadOverviewData = async () => {
     if (isLocalDevBypass) {
@@ -1921,6 +2018,11 @@ export const AdminDashboard: React.FC = () => {
                 onRemovePromoStory={handleRemovePromoStory}
                 onReset={handleResetSettings}
                 onSubmit={handleSaveSettings}
+                reviews={reviews}
+                onAddReview={handleAddReview}
+                onDeleteReview={handleDeleteReview}
+                onToggleReviewFeatured={handleToggleReviewFeatured}
+                reviewsSavedMessage={reviewsSavedMessage}
               />
             </Suspense>
 

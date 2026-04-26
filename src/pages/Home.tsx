@@ -12,6 +12,7 @@ import {
   Award,
   Users,
   Sprout,
+  Quote,
 } from 'lucide-react';
 import { ProductCard } from '../features/products/components/ProductCard';
 import { useProducts } from '../features/products/hooks/useProducts';
@@ -170,11 +171,112 @@ const WHY_ITEMS = [
   },
 ];
 
+type CustomerReview = {
+  id: string;
+  customerName: string;
+  location: string;
+  rating: number;
+  reviewText: string;
+  avatarInitials: string;
+  isFeatured: boolean;
+};
+
+const FALLBACK_REVIEWS: CustomerReview[] = [
+  {
+    id: 'r1',
+    customerName: 'Rahim Uddin',
+    location: 'Dhaka',
+    rating: 5,
+    reviewText: 'The best Harivanga I have tasted in years. Arrived perfectly ripe — exactly how you get them in Rangpur. My whole family loved every bite. Will definitely order again this season!',
+    avatarInitials: 'RU',
+    isFeatured: true,
+  },
+  {
+    id: 'r2',
+    customerName: 'Fahmida Begum',
+    location: 'Chattogram',
+    rating: 5,
+    reviewText: 'Ordered 5 kg and it was delivered within 48 hours in a beautiful box. Zero blemishes, no chemical smell — just pure, sweet mangoes. Harivanga.com has become our go-to every mango season.',
+    avatarInitials: 'FB',
+    isFeatured: true,
+  },
+  {
+    id: 'r3',
+    customerName: 'Tanvir Ahmed',
+    location: 'Sylhet',
+    rating: 5,
+    reviewText: 'Genuinely surprised by the quality. The mangoes were tree-ripened and the taste was exceptional. Packaging was solid and the customer service was responsive. Highly recommend.',
+    avatarInitials: 'TA',
+    isFeatured: true,
+  },
+  {
+    id: 'r4',
+    customerName: 'Nasrin Akter',
+    location: 'Rajshahi',
+    rating: 5,
+    reviewText: 'I gifted a box to my family and they were so impressed. The Harivanga variety from Podaganj is truly special — fibrous, fragrant, and incredibly sweet. Worth every taka.',
+    avatarInitials: 'NA',
+    isFeatured: true,
+  },
+  {
+    id: 'r5',
+    customerName: 'Mahbubul Hasan',
+    location: 'Khulna',
+    rating: 5,
+    reviewText: 'Second year ordering from Harivanga.com. They never disappoint. Direct from the farm means you get the authentic taste that supermarket mangoes simply cannot match.',
+    avatarInitials: 'MH',
+    isFeatured: true,
+  },
+  {
+    id: 'r6',
+    customerName: 'Sadia Islam',
+    location: 'Cumilla',
+    rating: 5,
+    reviewText: 'Smooth ordering process, fast delivery, and the mangoes were absolutely divine. I appreciated the eco-friendly packaging too. Will share with friends and family!',
+    avatarInitials: 'SI',
+    isFeatured: true,
+  },
+];
+
+const loadReviewsFromSupabase = async (): Promise<CustomerReview[]> => {
+  if (!hasSupabaseConfig) return FALLBACK_REVIEWS;
+  try {
+    const { data, error } = await supabase
+      .from('customer_reviews')
+      .select('id, customer_name, location, rating, review_text, avatar_initials, is_featured')
+      .eq('is_featured', true)
+      .order('created_at', { ascending: false })
+      .limit(6);
+    if (error) throw error;
+    if (!data || data.length === 0) return FALLBACK_REVIEWS;
+    return (data as Array<{
+      id: string;
+      customer_name: string;
+      location: string;
+      rating: number;
+      review_text: string;
+      avatar_initials: string;
+      is_featured: boolean;
+    }>).map((row) => ({
+      id: row.id,
+      customerName: row.customer_name,
+      location: row.location,
+      rating: row.rating,
+      reviewText: row.review_text,
+      avatarInitials: row.avatar_initials,
+      isFeatured: row.is_featured,
+    }));
+  } catch {
+    return FALLBACK_REVIEWS;
+  }
+};
+
 export const Home: React.FC = () => {
   const { products: featuredProducts } = useProducts({ limit: 4 });
   const [promotion, setPromotion] = useState<HomePromotion>(DEFAULT_HOME_PROMOTION);
   const [openPromoStoryIds, setOpenPromoStoryIds] = useState<Record<string, boolean>>({});
   const [activeBannerSlide, setActiveBannerSlide] = useState(0);
+  const [reviews, setReviews] = useState<CustomerReview[]>(FALLBACK_REVIEWS);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,6 +303,15 @@ export const Home: React.FC = () => {
   useEffect(() => {
     setOpenPromoStoryIds({});
   }, [promotion]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const data = await loadReviewsFromSupabase();
+      if (!cancelled) setReviews(data);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -523,6 +634,67 @@ export const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* ── CUSTOMER REVIEWS ── */}
+      {reviews.length > 0 && (
+        <section className="py-20 sm:py-28 bg-white [content-visibility:auto] [contain-intrinsic-size:1px_700px]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-14">
+              <span className="text-mango-orange font-bold text-xs uppercase tracking-[0.2em] inline-flex items-center gap-1.5">
+                <Star size={12} className="fill-mango-orange" /> Customer Stories
+              </span>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-black text-[#1a1200]">What Our Customers Say</h2>
+              <p className="mt-3 text-sm text-gray-500 max-w-md mx-auto">
+                Thousands of happy families across Bangladesh trust Harivanga every season.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {reviews.slice(0, 6).map((review) => (
+                <article
+                  key={review.id}
+                  className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-[#FAFAF8] p-6 hover:shadow-lg hover:border-amber-100 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        size={14}
+                        className={n <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200 fill-gray-200'}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="relative flex-1">
+                    <Quote size={18} className="text-mango-orange/20 absolute -top-1 -left-1" />
+                    <p className="text-[15px] text-gray-700 leading-relaxed pl-3">
+                      {review.reviewText}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-mango-orange to-amber-400 flex items-center justify-center text-xs font-black text-white shrink-0">
+                      {review.avatarInitials || review.customerName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[#1a1200]">{review.customerName}</p>
+                      {review.location && (
+                        <p className="text-xs text-gray-400">{review.location}</p>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-10 text-center">
+              <p className="text-sm text-gray-400 font-medium">
+                Join <span className="text-mango-orange font-bold">10,000+</span> happy customers who trust Harivanga every season
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── CTA BANNER ── */}
       <section className="py-16 sm:py-20 bg-gradient-to-r from-mango-orange to-orange-600 [content-visibility:auto] [contain-intrinsic-size:1px_200px]">

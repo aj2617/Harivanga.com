@@ -441,3 +441,42 @@ with check (
     where users.id = auth.uid() and users.role = 'admin'
   )
 );
+
+-- Customer reviews displayed on the homepage
+create table if not exists public.customer_reviews (
+  id uuid primary key default gen_random_uuid(),
+  customer_name text not null,
+  location text not null default '',
+  rating integer not null default 5 check (rating between 1 and 5),
+  review_text text not null,
+  avatar_initials text not null default '',
+  is_featured boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.customer_reviews enable row level security;
+
+drop policy if exists "reviews_public_read" on public.customer_reviews;
+create policy "reviews_public_read"
+on public.customer_reviews
+for select
+to anon, authenticated
+using (is_featured = true);
+
+drop policy if exists "reviews_admin_all" on public.customer_reviews;
+create policy "reviews_admin_all"
+on public.customer_reviews
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.users
+    where users.id = auth.uid() and users.role = 'admin'
+  )
+)
+with check (
+  exists (
+    select 1 from public.users
+    where users.id = auth.uid() and users.role = 'admin'
+  )
+);
