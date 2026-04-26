@@ -4,13 +4,16 @@
   --color-mango-yellow: #F5A623;
   --color-mango-orange: #FF6B35;
   --color-mango-dark: #1A1A1A;
-  
-  --font-sans: "Tiro Bangla", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-mango-green: #166534;
+  --color-mango-cream: #FAFAF8;
+
+  --font-sans: "Inter", "Tiro Bangla", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", "Tiro Bangla", serif;
 }
 
 @layer base {
   body {
-    @apply text-mango-dark bg-white font-sans;
+    @apply text-mango-dark bg-white font-sans antialiased;
   }
 }
 
@@ -18,16 +21,20 @@
   font-family: "Inter", "Tiro Bangla", ui-sans-serif, system-ui, sans-serif;
 }
 
+.font-display {
+  font-family: "Playfair Display", "Tiro Bangla", serif;
+}
+
 .font-admin {
   font-family: "Roboto", "Inter", "Tiro Bangla", ui-sans-serif, system-ui, sans-serif;
 }
 
 .glass {
-  @apply bg-white/80 backdrop-blur-md border border-white/20;
+  @apply bg-white/90 backdrop-blur-xl border border-white/30;
 }
 
 .page-fade-in {
-  animation: page-fade-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: page-fade-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .fade-up-enter {
@@ -39,14 +46,19 @@
 }
 
 .card-hover-lift:hover {
-  transform: translateY(-8px);
+  transform: translateY(-6px);
+}
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e8e0d4, transparent);
 }
 
 .mobile-menu-panel {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transition: grid-template-rows 0.24s ease, opacity 0.24s ease;
+  transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
 }
 
 .mobile-menu-panel[data-open='true'] {
@@ -66,9 +78,8 @@
 @keyframes page-fade-in {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(16px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -78,9 +89,8 @@
 @keyframes fade-up-enter {
   from {
     opacity: 0;
-    transform: translate3d(0, 18px, 0);
+    transform: translate3d(0, 20px, 0);
   }
-
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -88,25 +98,21 @@
 }
 
 @keyframes widget-attention {
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1);
     box-shadow: 0 16px 34px rgba(255, 107, 53, 0.32);
     opacity: 1;
   }
-
   35% {
     transform: scale(1.08);
     box-shadow: 0 20px 42px rgba(255, 107, 53, 0.42);
     opacity: 1;
   }
-
   50% {
     transform: scale(0.98);
     box-shadow: 0 12px 26px rgba(255, 107, 53, 0.24);
     opacity: 0.78;
   }
-
   70% {
     transform: scale(1.05);
     box-shadow: 0 18px 40px rgba(255, 107, 53, 0.38);
@@ -120,34 +126,13 @@
 }
 
 @keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  15% {
-    transform: translateX(-3px);
-  }
-
-  30% {
-    transform: translateX(3px);
-  }
-
-  45% {
-    transform: translateX(-3px);
-  }
-
-  60% {
-    transform: translateX(3px);
-  }
-
-  75% {
-    transform: translateX(-2px);
-  }
-
-  90% {
-    transform: translateX(2px);
-  }
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-3px); }
+  30% { transform: translateX(3px); }
+  45% { transform: translateX(-3px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+  90% { transform: translateX(2px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

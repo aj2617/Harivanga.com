@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, PlayCircle, ShieldCheck, Truck, Leaf, Home as HomeIcon } from 'lucide-react';
+import {
+  ArrowRight,
+  PlayCircle,
+  ShieldCheck,
+  Truck,
+  Leaf,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  Award,
+  Users,
+  Sprout,
+} from 'lucide-react';
 import { ProductCard } from '../features/products/components/ProductCard';
 import { useProducts } from '../features/products/hooks/useProducts';
 import { ADMIN_SETTINGS_CHANGED_EVENT, ADMIN_SETTINGS_KEY, LEGACY_ADMIN_SETTINGS_KEY } from '../lib/adminSettings';
@@ -26,13 +38,10 @@ type HomePromotion = {
   }>;
 };
 
-const DEFAULT_HOME_PROMOTION: HomePromotion = {
-  promoStories: [],
-};
+const DEFAULT_HOME_PROMOTION: HomePromotion = { promoStories: [] };
 
 const normalizePromoStories = (value: unknown): HomePromotion['promoStories'] => {
   if (!Array.isArray(value)) return [];
-
   return value
     .map((entry, index) => {
       if (!entry || typeof entry !== 'object') return null;
@@ -40,9 +49,7 @@ const normalizePromoStories = (value: unknown): HomePromotion['promoStories'] =>
       const title = typeof story.title === 'string' ? story.title.trim() : '';
       const videoUrl = typeof story.videoUrl === 'string' ? story.videoUrl.trim() : '';
       const description = typeof story.description === 'string' ? story.description.trim() : '';
-
       if (!videoUrl) return null;
-
       return {
         id: typeof story.id === 'string' && story.id ? story.id : `story-${index + 1}`,
         title,
@@ -57,34 +64,23 @@ const HOME_BANNER_SLIDES = [slide9, slide1, slide2, slide3, slide4, slide5, slid
 
 const loadHomePromotionFromLocalStorage = (): HomePromotion => {
   if (typeof window === 'undefined') return DEFAULT_HOME_PROMOTION;
-
   try {
     const raw =
       window.localStorage.getItem(ADMIN_SETTINGS_KEY) ??
       window.localStorage.getItem(LEGACY_ADMIN_SETTINGS_KEY);
-
     if (!raw) return DEFAULT_HOME_PROMOTION;
-
     const parsed = JSON.parse(raw) as Partial<HomePromotion> & {
       promoTitle?: string;
       promoVideoUrl?: string;
       promoDescription?: string;
     };
     const normalizedStories = normalizePromoStories(parsed.promoStories);
-
     return {
       promoStories:
         normalizedStories.length > 0
           ? normalizedStories
           : parsed.promoVideoUrl?.trim()
-            ? [
-                {
-                  id: 'story-1',
-                  title: parsed.promoTitle?.trim() ?? '',
-                  videoUrl: parsed.promoVideoUrl.trim(),
-                  description: parsed.promoDescription?.trim() ?? '',
-                },
-              ]
+            ? [{ id: 'story-1', title: parsed.promoTitle?.trim() ?? '', videoUrl: parsed.promoVideoUrl.trim(), description: parsed.promoDescription?.trim() ?? '' }]
             : [],
     };
   } catch {
@@ -93,26 +89,12 @@ const loadHomePromotionFromLocalStorage = (): HomePromotion => {
 };
 
 const loadHomePromotionFromSupabase = async (): Promise<HomePromotion> => {
-  if (!hasSupabaseConfig) {
-    return loadHomePromotionFromLocalStorage();
-  }
-
+  if (!hasSupabaseConfig) return loadHomePromotionFromLocalStorage();
   try {
-    const { data, error } = await supabase
-      .from('home_promotion')
-      .select('promo_stories')
-      .eq('id', 1)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
+    const { data, error } = await supabase.from('home_promotion').select('promo_stories').eq('id', 1).maybeSingle();
+    if (error) throw error;
     const normalizedStories = normalizePromoStories((data as { promo_stories?: unknown } | null)?.promo_stories);
-    if (normalizedStories.length > 0) {
-      return { promoStories: normalizedStories };
-    }
-
+    if (normalizedStories.length > 0) return { promoStories: normalizedStories };
     return loadHomePromotionFromLocalStorage();
   } catch {
     return loadHomePromotionFromLocalStorage();
@@ -123,28 +105,21 @@ const getYoutubeEmbedUrl = (url: string): string | null => {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, '');
-
     if (host === 'youtu.be') {
       const id = parsed.pathname.split('/').filter(Boolean)[0];
       return id ? `https://www.youtube.com/embed/${id}` : null;
     }
-
     if (host === 'youtube.com' || host === 'm.youtube.com') {
       if (parsed.pathname === '/watch') {
         const id = parsed.searchParams.get('v');
         return id ? `https://www.youtube.com/embed/${id}` : null;
       }
-
-      if (parsed.pathname.startsWith('/embed/')) {
-        return url;
-      }
-
+      if (parsed.pathname.startsWith('/embed/')) return url;
       if (parsed.pathname.startsWith('/shorts/')) {
         const id = parsed.pathname.split('/')[2];
         return id ? `https://www.youtube.com/embed/${id}` : null;
       }
     }
-
     return null;
   } catch {
     return null;
@@ -154,7 +129,6 @@ const getYoutubeEmbedUrl = (url: string): string | null => {
 const getYoutubeVideoId = (url: string): string | null => {
   const embedUrl = getYoutubeEmbedUrl(url);
   if (!embedUrl) return null;
-
   try {
     const parsed = new URL(embedUrl);
     const segments = parsed.pathname.split('/').filter(Boolean);
@@ -171,6 +145,31 @@ const getYoutubeThumbnailUrl = (url: string): string | null => {
 
 const isDirectVideoFile = (url: string): boolean => /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
 
+const TRUST_STATS = [
+  { icon: Users, value: '10,000+', label: 'Happy Customers', color: '#FF6B35' },
+  { icon: Leaf, value: '100%', label: 'Chemical Free', color: '#166534' },
+  { icon: Truck, value: '48h', label: 'Fast Delivery', color: '#FF6B35' },
+  { icon: Award, value: '5★', label: 'Quality Rated', color: '#F5A623' },
+];
+
+const WHY_ITEMS = [
+  {
+    num: '01',
+    title: 'Authentic Origin',
+    body: 'Sourced directly from Podaganj, Mithapukur, Rangpur — the red-soil birthplace of the finest Harivanga.',
+  },
+  {
+    num: '02',
+    title: 'Hand-Inspected Quality',
+    body: 'Every mango is inspected for ripeness, size, and blemishes before being packed in eco-friendly boxes.',
+  },
+  {
+    num: '03',
+    title: 'Fair Farm Pricing',
+    body: 'No middlemen. Farmers earn fairly; you get premium fruit at the best value available.',
+  },
+];
+
 export const Home: React.FC = () => {
   const { products: featuredProducts } = useProducts({ limit: 4 });
   const [promotion, setPromotion] = useState<HomePromotion>(DEFAULT_HOME_PROMOTION);
@@ -180,31 +179,22 @@ export const Home: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     let refreshTimer: number | null = null;
-
     const syncPromotion = async () => {
       const nextPromotion = await loadHomePromotionFromSupabase();
-      if (!cancelled) {
-        setPromotion(nextPromotion);
-      }
+      if (!cancelled) setPromotion(nextPromotion);
     };
-
     void syncPromotion();
     const handlePossibleChange = () => void syncPromotion();
     window.addEventListener('storage', handlePossibleChange);
     window.addEventListener(ADMIN_SETTINGS_CHANGED_EVENT, handlePossibleChange);
-
     if (hasSupabaseConfig) {
-      // Pull changes made by admins on other devices after a page visit.
       refreshTimer = window.setInterval(() => void syncPromotion(), 60000);
     }
-
     return () => {
       cancelled = true;
       window.removeEventListener('storage', handlePossibleChange);
       window.removeEventListener(ADMIN_SETTINGS_CHANGED_EVENT, handlePossibleChange);
-      if (refreshTimer !== null) {
-        window.clearInterval(refreshTimer);
-      }
+      if (refreshTimer !== null) window.clearInterval(refreshTimer);
     };
   }, []);
 
@@ -214,145 +204,166 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      setActiveBannerSlide((currentSlide) => (currentSlide + 1) % HOME_BANNER_SLIDES.length);
-    }, 3500);
-
+      setActiveBannerSlide((s) => (s + 1) % HOME_BANNER_SLIDES.length);
+    }, 4000);
     return () => window.clearInterval(intervalId);
   }, []);
 
-  const promoStories = promotion.promoStories.filter((story) => story.videoUrl.trim());
+  const promoStories = promotion.promoStories.filter((s) => s.videoUrl.trim());
   const showPromotion = promoStories.length > 0;
+
+  const prevSlide = () =>
+    setActiveBannerSlide((s) => (s - 1 + HOME_BANNER_SLIDES.length) % HOME_BANNER_SLIDES.length);
+  const nextSlide = () =>
+    setActiveBannerSlide((s) => (s + 1) % HOME_BANNER_SLIDES.length);
 
   return (
     <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(255,194,84,0.18),_rgba(255,255,255,1)_52%)]">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,250,241,0.96),rgba(255,255,255,0.88))]" />
-        <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-4 pb-14 pt-16 sm:px-6 sm:pb-16 sm:pt-20 lg:grid-cols-[minmax(0,1.02fr)_minmax(430px,0.98fr)] lg:gap-14 lg:px-8 lg:pb-20 lg:pt-24">
-          <div className="max-w-3xl">
-            <span className="mb-6 inline-block rounded-full bg-mango-orange px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white sm:text-sm">
-              Season 2026 Is Here
+
+      {/* ── HERO ── */}
+      <section className="relative min-h-[88vh] flex items-center overflow-hidden bg-[#0f0c07]">
+        <div className="absolute inset-0">
+          {HOME_BANNER_SLIDES.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt=""
+              aria-hidden
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === activeBannerSlide ? 'opacity-100' : 'opacity-0'}`}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+            />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-2 mb-5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-mango-yellow">
+              <Sprout size={12} />
+              Season 2026 — Now Open
             </span>
-            <h1 className="max-w-4xl text-[3.05rem] font-black leading-[0.92] tracking-tight text-[#8f4b00] sm:text-6xl lg:text-7xl xl:text-[5.2rem]">
-              Farm Fresh <span className="text-mango-orange italic">Mangoes</span> for Every Doorstep
+
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.92] tracking-tight text-white">
+              Farm Fresh{' '}
+              <span
+                className="italic"
+                style={{ color: '#F5A623', textShadow: '0 0 60px rgba(245,166,35,0.35)' }}
+              >
+                Mangoes
+              </span>
+              <br />
+              for Every Doorstep
             </h1>
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#6f6255] sm:text-lg">
-              Straight from Podaganj&apos;s legendary red-soil farms, our hand-picked Harivanga mangoes arrive tree-ripened,
-              chemical-free, and packed for a premium fresh-fruit experience.
+
+            <p className="mt-6 text-base sm:text-lg text-white/70 max-w-xl leading-relaxed">
+              Hand-picked Harivanga mangoes from Podaganj&apos;s legendary red-soil farms — tree-ripened, chemical-free, and delivered in 48 hours.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-3">
               <Link
                 to="/products"
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-mango-orange px-6 py-4 text-base font-bold text-white shadow-[0_16px_36px_rgba(255,107,53,0.26)] transition-all hover:bg-mango-orange/90 sm:w-auto sm:px-8"
+                className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-mango-orange px-8 py-4 text-base font-bold text-white shadow-2xl shadow-mango-orange/40 hover:bg-orange-600 transition-all hover:shadow-orange-600/40 hover:gap-4"
               >
-                Order Now
-                <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+                Shop Mangoes
+                <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
                 to="/about"
-                className="inline-flex w-full items-center justify-center rounded-full border border-[#e6d7c4] bg-white/80 px-6 py-4 text-base font-bold text-[#8f4b00] transition-all hover:bg-white sm:w-auto sm:px-8"
+                className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-8 py-4 text-base font-bold text-white hover:bg-white/20 transition-all"
               >
                 Our Story
               </Link>
             </div>
-          </div>
 
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-[36px] bg-[radial-gradient(circle,_rgba(255,184,77,0.24),_transparent_65%)] blur-2xl" />
-            <div className="relative overflow-hidden rounded-[30px] border border-[#eadfce] bg-[#201b16] p-3 shadow-[0_24px_60px_rgba(69,42,0,0.18)] sm:p-4">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,#1f1b16_0%,#2b241c_100%)] sm:aspect-[5/6] lg:h-[540px] lg:aspect-auto">
-                <div className="absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-black/40 via-black/12 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 z-10 h-32 bg-gradient-to-t from-black/55 via-black/18 to-transparent" />
-                {HOME_BANNER_SLIDES.map((slideSrc, index) => (
-                  <img
-                    key={slideSrc}
-                    src={slideSrc}
-                    alt=""
-                    aria-hidden={index !== activeBannerSlide}
-                    className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-                      index === activeBannerSlide ? 'opacity-100' : 'opacity-0'
-                    }`}
-                    loading={index === 0 ? 'eager' : 'lazy'}
-                    decoding="async"
-                  />
+            <div className="mt-10 flex items-center gap-4">
+              <div className="flex -space-x-2">
+                {['🧑', '👨', '👩', '🧑'].map((e, i) => (
+                  <span
+                    key={i}
+                    className="w-8 h-8 rounded-full bg-amber-100 border-2 border-white/30 flex items-center justify-center text-sm"
+                  >
+                    {e}
+                  </span>
                 ))}
-
-                <div className="absolute left-4 top-4 z-10 rounded-full bg-white/92 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[#8f4b00] shadow-sm sm:left-5 sm:top-5">
-                  Premium Harvest
-                </div>
-                <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/25 px-3 py-2 backdrop-blur-sm sm:bottom-5">
-                  {HOME_BANNER_SLIDES.map((_, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => setActiveBannerSlide(index)}
-                      aria-label={`Show banner slide ${index + 1}`}
-                      className={`h-2.5 rounded-full transition-all ${
-                        index === activeBannerSlide ? 'w-7 bg-white' : 'w-2.5 bg-white/55 hover:bg-white/80'
-                      }`}
-                    />
-                  ))}
-                </div>
+              </div>
+              <div className="text-sm text-white/70">
+                <span className="font-bold text-white">10,000+</span> happy customers this season
               </div>
             </div>
           </div>
         </div>
+
+        <div className="absolute right-6 bottom-1/2 translate-y-1/2 hidden lg:flex flex-col gap-2 z-10">
+          <button
+            onClick={prevSlide}
+            className="w-10 h-10 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="w-10 h-10 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-all"
+            aria-label="Next slide"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
+          {HOME_BANNER_SLIDES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveBannerSlide(i)}
+              aria-label={`Slide ${i + 1}`}
+              className={`rounded-full transition-all ${i === activeBannerSlide ? 'w-7 h-2.5 bg-mango-yellow' : 'w-2.5 h-2.5 bg-white/40 hover:bg-white/70'}`}
+            />
+          ))}
+        </div>
       </section>
 
-      {/* Trust Bar */}
-      <section className="py-12 bg-mango-yellow/5 border-y border-mango-yellow/10 [content-visibility:auto] [contain-intrinsic-size:1px_480px]">
+      {/* ── STATS BAR ── */}
+      <section className="bg-white border-b border-gray-100 [content-visibility:auto] [contain-intrinsic-size:1px_120px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
-                <Leaf size={24} />
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-100">
+            {TRUST_STATS.map(({ icon: Icon, value, label, color }) => (
+              <div key={label} className="flex flex-col sm:flex-row items-center gap-3 px-6 py-7 text-center sm:text-left">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: `${color}15`, color }}
+                >
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <p className="text-xl font-black text-[#1a1200]">{value}</p>
+                  <p className="text-xs text-gray-500 font-medium">{label}</p>
+                </div>
               </div>
-              <div>
-                <h4 className="font-bold text-sm">100% Fresh</h4>
-                <p className="text-xs text-gray-500">Direct from farm</p>
-              </div>
-            </div>
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
-                <Truck size={24} />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm">Fast Delivery</h4>
-                <p className="text-xs text-gray-500">Within 2 days</p>
-              </div>
-            </div>
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
-                <ShieldCheck size={24} />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm">Pesticide Free</h4>
-                <p className="text-xs text-gray-500">Naturally ripened</p>
-              </div>
-            </div>
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-mango-orange">
-                <HomeIcon size={24} />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm">Farm to Table</h4>
-                <p className="text-xs text-gray-500">No middleman</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-24 bg-white [content-visibility:auto] [contain-intrinsic-size:1px_900px]">
+      {/* ── FEATURED PRODUCTS ── */}
+      <section className="py-20 sm:py-28" style={{ background: '#FAFAF8' }} data-content-visibility="auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <span className="text-mango-orange font-bold text-sm uppercase tracking-widest">Our Selection</span>
-              <h2 className="mt-2 text-4xl font-black">Featured Varieties</h2>
+              <span className="text-mango-orange font-bold text-xs uppercase tracking-[0.2em] inline-flex items-center gap-1.5">
+                <Leaf size={12} /> Our Selection
+              </span>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-black text-[#1a1200]">Featured Varieties</h2>
+              <p className="mt-2 text-sm text-gray-500 max-w-md">
+                Handpicked from the best orchards of Rangpur for this season.
+              </p>
             </div>
-            <Link to="/products" className="text-mango-orange font-bold flex items-center gap-1 hover:underline">
-              View All <ArrowRight size={16} />
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-2 text-sm font-bold text-mango-orange hover:gap-3 transition-all"
+            >
+              View All Varieties <ArrowRight size={16} />
             </Link>
           </div>
 
@@ -364,23 +375,16 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* ── PROMO STORIES ── */}
       {showPromotion && (
-        <section className="bg-[#fff8f1] py-10 [content-visibility:auto] [contain-intrinsic-size:1px_520px]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto mb-8 max-w-[210px] text-center sm:max-w-none">
-              <h2 className="text-[1.7rem] font-black uppercase tracking-[0.08em] leading-[1.02] text-[#201b16] sm:text-4xl sm:tracking-[0.18em]">
-                Stories to Watch
-              </h2>
-              <div className="mt-4 flex items-center justify-center gap-2.5 sm:gap-4">
-                <span className="h-px w-9 bg-[#d4c7b6] sm:w-16" />
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-[#eadfce] sm:h-12 sm:w-12">
-                  <img src="/logo.png" alt="" aria-hidden="true" className="h-6 w-6 object-contain sm:h-7 sm:w-7" />
-                </div>
-                <span className="h-px w-9 bg-[#d4c7b6] sm:w-16" />
-              </div>
+        <section className="py-16 bg-white border-t border-gray-100 [content-visibility:auto] [contain-intrinsic-size:1px_520px]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <span className="text-mango-orange font-bold text-xs uppercase tracking-[0.2em]">Farm Stories</span>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-black text-[#1a1200]">Stories to Watch</h2>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {promoStories.map((story, index) => {
                 const embedUrl = getYoutubeEmbedUrl(story.videoUrl);
                 const thumbnailUrl = getYoutubeThumbnailUrl(story.videoUrl);
@@ -389,31 +393,29 @@ export const Home: React.FC = () => {
                 return (
                   <article
                     key={story.id}
-                    className="overflow-hidden rounded-2xl border border-[#dfe5df] bg-white p-2 shadow-[0_8px_26px_rgba(44,62,45,0.08)]"
+                    className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-shadow"
                   >
-                    <div className="relative aspect-video overflow-hidden rounded-xl bg-[#1d241e]">
+                    <div className="relative aspect-video overflow-hidden bg-gray-900">
                       {!isOpen ? (
                         <button
                           type="button"
-                          onClick={() => setOpenPromoStoryIds((current) => ({ ...current, [story.id]: true }))}
-                          aria-label={story.title ? `Play ${story.title}` : 'Play story video'}
-                          className="relative block h-full w-full overflow-hidden"
+                          onClick={() => setOpenPromoStoryIds((c) => ({ ...c, [story.id]: true }))}
+                          aria-label={story.title ? `Play ${story.title}` : 'Play video'}
+                          className="relative block h-full w-full overflow-hidden group"
                         >
                           {thumbnailUrl ? (
                             <img
                               src={thumbnailUrl}
                               alt={story.title || 'Story thumbnail'}
-                              className="absolute inset-0 h-full w-full object-cover"
+                              className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                               loading={index === 0 ? 'eager' : 'lazy'}
-                              fetchPriority={index === 0 ? 'high' : 'auto'}
-                              decoding="async"
                             />
                           ) : (
-                            <div className="absolute inset-0 bg-[linear-gradient(135deg,#36513f_0%,#1d241e_100%)]" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-amber-900 to-orange-950" />
                           )}
-                          <div className="absolute inset-0 bg-black/15" />
-                          <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 backdrop-blur-[2px] shadow-[0_12px_24px_rgba(0,0,0,0.28)]">
-                            <span className="ml-1 block h-0 w-0 border-y-[9px] border-y-transparent border-l-[14px] border-l-white" />
+                          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors" />
+                          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-16 w-16 items-center justify-center rounded-full bg-white/95 shadow-2xl group-hover:scale-110 transition-transform">
+                            <span className="ml-1 border-y-[10px] border-y-transparent border-l-[16px] border-l-mango-orange" />
                           </span>
                         </button>
                       ) : embedUrl ? (
@@ -427,13 +429,7 @@ export const Home: React.FC = () => {
                           allowFullScreen
                         />
                       ) : isDirectVideoFile(story.videoUrl) ? (
-                        <video
-                          src={story.videoUrl}
-                          controls
-                          preload="metadata"
-                          autoPlay
-                          className="h-full w-full object-cover"
-                        />
+                        <video src={story.videoUrl} controls preload="metadata" autoPlay className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center text-white">
                           <PlayCircle size={52} className="text-white/90" />
@@ -441,14 +437,19 @@ export const Home: React.FC = () => {
                             href={story.videoUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-full bg-[#ff2f1a] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#e52814]"
+                            className="inline-flex items-center gap-2 rounded-full bg-mango-orange px-5 py-3 text-sm font-bold text-white hover:bg-orange-600 transition-colors"
                           >
-                            Watch Video
-                            <ArrowRight size={16} />
+                            Watch Video <ArrowRight size={15} />
                           </a>
                         </div>
                       )}
                     </div>
+                    {story.title && (
+                      <div className="px-5 py-4">
+                        <h3 className="font-bold text-[#1a1200]">{story.title}</h3>
+                        {story.description && <p className="mt-1 text-sm text-gray-500">{story.description}</p>}
+                      </div>
+                    )}
                   </article>
                 );
               })}
@@ -457,64 +458,88 @@ export const Home: React.FC = () => {
         </section>
       )}
 
-      {/* Why Choose Us */}
-      <section className="py-24 bg-mango-dark text-white overflow-hidden relative [content-visibility:auto] [contain-intrinsic-size:1px_1100px]">
-        <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none">
-          <img
-            src="/images/downloaded/pattern.webp"
-            alt="Pattern"
-            className="w-full h-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
+      {/* ── WHY CHOOSE US ── */}
+      <section className="py-20 sm:py-28 bg-[#0f0c07] text-white overflow-hidden relative [content-visibility:auto] [contain-intrinsic-size:1px_1100px]">
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none">
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #FF6B35 0%, transparent 55%), radial-gradient(circle at 80% 50%, #F5A623 0%, transparent 55%)' }} />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl font-black mb-8 leading-tight">
-                Why Harivanga.com is the <span className="text-mango-yellow">Trusted Choice</span> for Thousands
+              <span className="text-mango-yellow font-bold text-xs uppercase tracking-[0.2em]">Why Harivanga</span>
+              <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black leading-[1.05] text-white">
+                The{' '}
+                <span className="text-mango-yellow italic">Trusted Choice</span>
+                {' '}for Thousands
               </h2>
-              <div className="space-y-8">
-                <div className="flex gap-6">
-                  <div className="shrink-0 w-12 h-12 bg-mango-orange rounded-2xl flex items-center justify-center font-bold text-xl">01</div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Authentic Origin</h3>
-                    <p className="text-gray-400 leading-relaxed">We source from Podaganj, Mithapukur, Rangpur, where Harivanga grows in its signature red-soil terroir.</p>
+              <p className="mt-4 text-white/55 text-base leading-relaxed max-w-md">
+                From orchard to doorstep — we keep the promise of quality at every step.
+              </p>
+
+              <div className="mt-10 space-y-8">
+                {WHY_ITEMS.map(({ num, title, body }) => (
+                  <div key={num} className="flex gap-5 group">
+                    <div className="shrink-0 w-12 h-12 rounded-2xl bg-mango-orange flex items-center justify-center text-base font-black text-white">
+                      {num}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold mb-1.5 text-white">{title}</h3>
+                      <p className="text-white/50 text-sm leading-relaxed">{body}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-6">
-                  <div className="shrink-0 w-12 h-12 bg-mango-orange rounded-2xl flex items-center justify-center font-bold text-xl">02</div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Quality Control</h3>
-                    <p className="text-gray-400 leading-relaxed">Each mango is hand-inspected for ripeness, size, and quality before being packed in our eco-friendly boxes.</p>
-                  </div>
-                </div>
-                <div className="flex gap-6">
-                  <div className="shrink-0 w-12 h-12 bg-mango-orange rounded-2xl flex items-center justify-center font-bold text-xl">03</div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Fair Pricing</h3>
-                    <p className="text-gray-400 leading-relaxed">By cutting out middlemen, we ensure farmers get a fair price and you get premium quality at the best value.</p>
-                  </div>
-                </div>
+                ))}
               </div>
+
+              <Link
+                to="/about"
+                className="mt-10 inline-flex items-center gap-2 text-sm font-bold text-mango-yellow hover:gap-4 transition-all"
+              >
+                Read Our Full Story <ArrowRight size={15} />
+              </Link>
             </div>
-            <div className="relative">
-              <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl">
+
+            <div className="relative hidden lg:block">
+              <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-black/50 ring-1 ring-white/10">
                 <img
                   src="/images/downloaded/farm.webp"
-                  alt="Farm"
+                  alt="Harivanga farm"
                   className="w-full h-full object-cover"
                   loading="lazy"
                   decoding="async"
                 />
               </div>
-              <div className="absolute -bottom-8 -left-8 bg-mango-orange p-8 rounded-3xl shadow-xl hidden md:block">
+              <div className="absolute -bottom-6 -left-6 bg-mango-orange px-8 py-6 rounded-2xl shadow-2xl shadow-mango-orange/40">
                 <p className="text-3xl font-black">10k+</p>
-                <p className="text-sm font-medium opacity-80 uppercase tracking-wider">Happy Customers</p>
+                <p className="text-xs font-semibold opacity-80 uppercase tracking-wider mt-0.5">Happy Customers</p>
+              </div>
+              <div className="absolute -top-4 -right-4 bg-[#1a1408] border border-white/10 px-6 py-4 rounded-2xl shadow-xl">
+                <div className="flex items-center gap-1 mb-1">
+                  {[...Array(5)].map((_, i) => <Star key={i} size={12} className="fill-mango-yellow text-mango-yellow" />)}
+                </div>
+                <p className="text-xs text-white/60">"Best mangoes I&apos;ve ever had!"</p>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── CTA BANNER ── */}
+      <section className="py-16 sm:py-20 bg-gradient-to-r from-mango-orange to-orange-600 [content-visibility:auto] [contain-intrinsic-size:1px_200px]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">
+            Ready to Taste the Difference?
+          </h2>
+          <p className="text-white/80 text-base mb-8 max-w-xl mx-auto">
+            Order fresh Harivanga mangoes today and experience farm-to-table quality delivered in 48 hours.
+          </p>
+          <Link
+            to="/products"
+            className="inline-flex items-center gap-2.5 rounded-full bg-white px-8 py-4 text-base font-bold text-mango-orange shadow-2xl shadow-black/20 hover:bg-orange-50 transition-all group"
+          >
+            Order Now
+            <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+          </Link>
         </div>
       </section>
     </div>
