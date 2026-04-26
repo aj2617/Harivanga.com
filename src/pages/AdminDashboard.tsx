@@ -15,7 +15,8 @@ import { formatLongDate, formatOrderTimestamp, formatShortMonthDay } from '../li
 import { 
   LayoutDashboard, Package, ShoppingBag, TrendingUp, 
   Plus, Edit2, Trash2,
-  Search, Settings as SettingsIcon, House, Lock, LogOut, Eye, EyeOff
+  Search, Settings as SettingsIcon, House, Lock, LogOut, Eye, EyeOff,
+  Bell, X, CheckCheck, ArrowRight
 } from 'lucide-react';
 import { canUseDevelopmentFallbacks, hasSupabaseConfig } from '../lib/env';
 
@@ -32,6 +33,14 @@ const AdminChangePasswordPanel = lazy(() =>
 const LOCAL_DEV_ADMIN_EMAIL = 'admin@local';
 const LOCAL_DEV_ADMIN_PASSWORD = 'admin1234';
 type AdminTab = 'overview' | 'products' | 'orders' | 'settings';
+type OrderNotification = {
+  id: string;
+  orderId: string;
+  customerName: string;
+  amount: number;
+  createdAt: string;
+  seen: boolean;
+};
 type DeliveryZoneSetting = { id: string; name: string; charge: number };
 type AdminUserSetting = { id: string; name: string; email: string; role: 'Admin' | 'Manager' | 'Staff' };
 type LegacyPromoSettings = {
@@ -292,6 +301,9 @@ export const AdminDashboard: React.FC = () => {
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string | null>(null);
   const [reviews, setReviews] = useState<CustomerReviewInput[]>([]);
   const [reviewsSavedMessage, setReviewsSavedMessage] = useState<string | null>(null);
+  const [orderNotifications, setOrderNotifications] = useState<OrderNotification[]>([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [toastNotif, setToastNotif] = useState<OrderNotification | null>(null);
   const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : '');
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminPassword, setShowAdminPassword] = useState(false);
@@ -349,6 +361,19 @@ export const AdminDashboard: React.FC = () => {
     const timeout = window.setTimeout(() => setReviewsSavedMessage(null), 2500);
     return () => window.clearTimeout(timeout);
   }, [reviewsSavedMessage]);
+
+  useEffect(() => {
+    if (!toastNotif) return;
+    const timer = window.setTimeout(() => setToastNotif(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toastNotif]);
+
+  useEffect(() => {
+    if (!hasAdminAccess || !hasSupabaseConfig) return;
+    if ('Notification' in window && Notification.permission === 'default') {
+      void Notification.requestPermission();
+    }
+  }, [hasAdminAccess]);
 
   useEffect(() => {
     if (!isAdmin || !hasSupabaseConfig) return;
@@ -634,6 +659,39 @@ export const AdminDashboard: React.FC = () => {
       })
       .subscribe();
 
+    const newOrderNotifChannel = supabase
+      .channel('new-order-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        (payload) => {
+          const row = payload.new as {
+            id: string;
+            customer_name: string;
+            total: number;
+            created_at: string;
+          };
+          const notif: OrderNotification = {
+            id: `notif-${row.id}`,
+            orderId: row.id,
+            customerName: row.customer_name,
+            amount: row.total,
+            createdAt: row.created_at,
+            seen: false,
+          };
+          setOrderNotifications((prev) => [notif, ...prev].slice(0, 30));
+          setToastNotif(notif);
+          if ('Notification' in window && Notification.permission === 'granted') {
+            void new Notification('New Order Received!', {
+              body: `${row.customer_name} placed an order for ৳${row.total.toLocaleString()}`,
+              icon: '/logo.png',
+              tag: row.id,
+            });
+          }
+        }
+      )
+      .subscribe();
+
     const refreshLocalOrders = () => {
       if (!isLocalDevBypass) return;
       const nextOrders = getLocalDevOrders();
@@ -646,6 +704,7 @@ export const AdminDashboard: React.FC = () => {
     return () => {
       void supabase.removeChannel(productsChannel);
       void supabase.removeChannel(ordersChannel);
+      void supabase.removeChannel(newOrderNotifChannel);
       window.removeEventListener(LOCAL_DEV_ORDERS_UPDATED_EVENT, refreshLocalOrders);
     };
   }, [
@@ -1328,6 +1387,7 @@ export const AdminDashboard: React.FC = () => {
     return 'bg-gray-50 text-gray-500';
   };
   return (
+    <>
     <div className="font-admin min-h-screen bg-gray-50 flex flex-col lg:flex-row">
       {/* Sidebar */}
       <aside className="w-64 bg-mango-dark text-white hidden lg:flex flex-col sticky top-0 h-screen">
@@ -1370,6 +1430,65 @@ export const AdminDashboard: React.FC = () => {
           </nav>
         </div>
         
+        {/* Notification Bell — Desktop Sidebar */}
+        <div className="px-8 pb-4 relative">
+          <button
+            onClick={() => setShowNotifPanel((v) => !v)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 transition-all relative"
+          >
+            <span className="relative">
+              <Bell size={20} />
+              {orderNotifications.filter((n) => !n.seen).length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-red-500 flex items-center justify-center text-[9px] font-black text-white px-0.5">
+                  {orderNotifications.filter((n) => !n.seen).length > 9 ? '9+' : orderNotifications.filter((n) => !n.seen).length}
+                </span>
+              )}
+            </span>
+            Notifications
+          </button>
+
+          {showNotifPanel && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 z-50 bg-[#1a1510] border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[420px] flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                <span className="text-xs font-black uppercase tracking-wider text-white/70">Recent Orders</span>
+                {orderNotifications.some((n) => !n.seen) && (
+                  <button
+                    onClick={() => setOrderNotifications((prev) => prev.map((n) => ({ ...n, seen: true })))}
+                    className="flex items-center gap-1 text-[10px] font-bold text-mango-orange hover:text-orange-400 transition-colors"
+                  >
+                    <CheckCheck size={12} /> Mark all read
+                  </button>
+                )}
+              </div>
+              <div className="overflow-y-auto flex-1">
+                {orderNotifications.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-white/30">No new orders yet</div>
+                ) : (
+                  orderNotifications.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => {
+                        setOrderNotifications((prev) => prev.map((item) => item.id === n.id ? { ...item, seen: true } : item));
+                        setActiveTab('orders');
+                        setShowNotifPanel(false);
+                      }}
+                      className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${!n.seen ? 'bg-mango-orange/5' : ''}`}
+                    >
+                      {!n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-mango-orange" />}
+                      {n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-transparent" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-white truncate">{n.customerName}</p>
+                        <p className="text-[11px] text-white/50">৳{n.amount.toLocaleString()} · {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                      <ArrowRight size={12} className="text-white/30 shrink-0 mt-1" />
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mt-auto p-8 border-t border-white/5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-mango-orange rounded-full flex items-center justify-center font-bold">A</div>
@@ -1404,6 +1523,19 @@ export const AdminDashboard: React.FC = () => {
                 aria-label="Go to home page"
               >
                 <House size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNotifPanel((v) => !v)}
+                className="relative inline-flex items-center justify-center rounded-2xl bg-white/10 p-3 text-white transition hover:bg-white/15"
+                aria-label="Notifications"
+              >
+                <Bell size={18} />
+                {orderNotifications.filter((n) => !n.seen).length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] rounded-full bg-red-500 flex items-center justify-center text-[9px] font-black text-white px-0.5">
+                    {orderNotifications.filter((n) => !n.seen).length > 9 ? '9+' : orderNotifications.filter((n) => !n.seen).length}
+                  </span>
+                )}
               </button>
               <button
                 type="button"
@@ -2071,5 +2203,86 @@ export const AdminDashboard: React.FC = () => {
         </Suspense>
         )}
     </div>
+
+      {/* Mobile Notification Dropdown (full-width panel under header) */}
+      {showNotifPanel && (
+        <div className="lg:hidden fixed inset-0 z-50" onClick={() => setShowNotifPanel(false)}>
+          <div
+            className="absolute top-[130px] left-4 right-4 bg-[#1a1510] border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[60vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <span className="text-xs font-black uppercase tracking-wider text-white/70">Notifications</span>
+              <div className="flex items-center gap-3">
+                {orderNotifications.some((n) => !n.seen) && (
+                  <button
+                    onClick={() => setOrderNotifications((prev) => prev.map((n) => ({ ...n, seen: true })))}
+                    className="flex items-center gap-1 text-[10px] font-bold text-mango-orange"
+                  >
+                    <CheckCheck size={12} /> Mark all read
+                  </button>
+                )}
+                <button onClick={() => setShowNotifPanel(false)} className="text-white/40 hover:text-white">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {orderNotifications.length === 0 ? (
+                <div className="py-10 text-center text-xs text-white/30">No new orders yet</div>
+              ) : (
+                orderNotifications.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      setOrderNotifications((prev) => prev.map((item) => item.id === n.id ? { ...item, seen: true } : item));
+                      setActiveTab('orders');
+                      setShowNotifPanel(false);
+                    }}
+                    className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${!n.seen ? 'bg-mango-orange/5' : ''}`}
+                  >
+                    {!n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-mango-orange" />}
+                    {n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-transparent" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{n.customerName}</p>
+                      <p className="text-xs text-white/50">৳{n.amount.toLocaleString()} · {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                    <ArrowRight size={13} className="text-white/30 shrink-0 mt-1" />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Order Toast */}
+      {toastNotif && (
+        <div className="fixed bottom-6 right-6 z-[200] animate-slide-up">
+          <div className="flex items-start gap-4 bg-[#1a1200] text-white rounded-2xl shadow-2xl border border-mango-orange/30 p-4 max-w-sm">
+            <div className="shrink-0 w-10 h-10 rounded-xl bg-mango-orange flex items-center justify-center">
+              <ShoppingBag size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black uppercase tracking-wider text-mango-orange mb-0.5">New Order!</p>
+              <p className="text-sm font-bold truncate">{toastNotif.customerName}</p>
+              <p className="text-xs text-white/60">৳{toastNotif.amount.toLocaleString()} · Just now</p>
+              <button
+                onClick={() => { setActiveTab('orders'); setToastNotif(null); }}
+                className="mt-2 flex items-center gap-1.5 text-xs font-bold text-mango-orange hover:text-orange-400 transition-colors"
+              >
+                View Order <ArrowRight size={12} />
+              </button>
+            </div>
+            <button
+              onClick={() => setToastNotif(null)}
+              className="shrink-0 text-white/30 hover:text-white/70 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
