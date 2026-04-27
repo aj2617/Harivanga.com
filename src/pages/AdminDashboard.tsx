@@ -1331,12 +1331,6 @@ export const AdminDashboard: React.FC = () => {
                 </button>
 
                 {canUseDevelopmentFallbacks() && (
-                  <div className="rounded-[16px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-xs font-medium text-[#b8c7ea]">
-                    Local test login: <span className="font-bold text-white">{LOCAL_DEV_ADMIN_EMAIL}</span> / <span className="font-bold text-white">{LOCAL_DEV_ADMIN_PASSWORD}</span>
-                  </div>
-                )}
-
-                {canUseDevelopmentFallbacks() && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1344,15 +1338,19 @@ export const AdminDashboard: React.FC = () => {
                       setAdminPassword(LOCAL_DEV_ADMIN_PASSWORD);
                       setAdminLoginError(null);
                       setAdminResetMessage(null);
-                      window.setTimeout(() => {
-                        void handleAdminLogin({ preventDefault: () => {} } as React.FormEvent);
-                      }, 0);
+                      void handleAdminLogin({ preventDefault: () => {} } as React.FormEvent);
                     }}
                     disabled={isAdminAuthenticating || isAdminResetting}
                     className="w-full rounded-[14px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-sm font-bold text-[#dce7ff] transition hover:bg-[#1c2948] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Sign in as local admin
                   </button>
+                )}
+
+                {canUseDevelopmentFallbacks() && (
+                  <div className="rounded-[16px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-xs font-medium text-[#b8c7ea]">
+                    Local test login: <span className="font-bold text-white">{LOCAL_DEV_ADMIN_EMAIL}</span> / <span className="font-bold text-white">{LOCAL_DEV_ADMIN_PASSWORD}</span>
+                  </div>
                 )}
 
                 <button
