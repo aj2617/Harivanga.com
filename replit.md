@@ -25,6 +25,8 @@ src/
 ├── context/             # Global state
 │   ├── AuthContext.tsx       # Supabase authentication
 │   └── CartContext.tsx       # Shopping cart (localStorage)
+├── data/                # Static data
+│   └── mockData.ts          # 6 demo mango products (fallback when Supabase not configured)
 ├── features/            # Feature modules
 │   ├── admin/               # Admin dashboard components
 │   ├── orders/              # Order tracking
