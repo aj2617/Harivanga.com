@@ -32,7 +32,7 @@ export const Navbar: React.FC = () => {
     }`;
 
   const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `block px-5 py-3 text-[15px] font-semibold border-l-2 transition-colors ${
+    `block w-full px-5 py-3 text-[15px] font-semibold border-l-2 transition-colors ${
       isActive
         ? 'border-mango-orange text-mango-orange bg-orange-50/60'
         : 'border-transparent text-[#3d2e1e] hover:text-mango-orange hover:bg-gray-50'
