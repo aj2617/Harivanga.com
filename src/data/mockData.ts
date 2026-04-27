@@ -1,3 +1,125 @@
 import { Product } from '../types';
 
-export const MOCK_PRODUCTS: Product[] = [];
+export const MOCK_PRODUCTS: Product[] = [
+  {
+    id: 'demo-harivanga-1',
+    name: 'Harivanga Mango',
+    description:
+      "The crown jewel of Bangladeshi mangoes — grown in the legendary red-soil orchards of Podaganj, Mithapukur, Rangpur. Tree-ripened for a natural sweetness you can't find in market mangoes. No carbide, no chemicals. Every mango is hand-inspected and packed with care.",
+    image: '/images/downloaded/hero.webp',
+    images: ['/images/downloaded/hero.webp', '/images/downloaded/farm.webp'],
+    pricePerKg: 280,
+    stock: 150,
+    variety: 'Harivanga',
+    origin: 'Podagonj',
+    tasteProfile: 'Exceptionally sweet, rich golden flesh, virtually fiberless, with a heavenly tropical aroma.',
+    isAvailable: true,
+    variants: [
+      { weight: '1 kg', price: 280 },
+      { weight: '3 kg', price: 780 },
+      { weight: '5 kg', price: 1250 },
+      { weight: '10 kg', price: 2400 },
+    ],
+  },
+  {
+    id: 'demo-fazli-1',
+    name: 'Fazli Mango',
+    description:
+      'The king-size mango beloved across Bangladesh — a single Fazli can weigh up to 1.5 kg! Originally from Chapainawabganj, our Fazli variety is known for its thick, juicy flesh and mild sweetness. Excellent for eating fresh, making juice, or sharing with the whole family.',
+    image: '/images/downloaded/fazli.webp',
+    images: ['/images/downloaded/fazli.webp', '/images/downloaded/mixed.webp'],
+    pricePerKg: 180,
+    stock: 200,
+    variety: 'Fazli',
+    origin: 'Rangpur',
+    tasteProfile: 'Mild sweetness with a slightly tangy finish. Dense, thick flesh, minimal fiber, and a gentle floral scent.',
+    isAvailable: true,
+    variants: [
+      { weight: '1 kg', price: 180 },
+      { weight: '3 kg', price: 500 },
+      { weight: '5 kg', price: 800 },
+      { weight: '10 kg', price: 1500 },
+    ],
+  },
+  {
+    id: 'demo-himsagar-1',
+    name: 'Himsagar Mango',
+    description:
+      'A seasonal treasure from the orchards of Rajshahi and Rangpur — Himsagar is famous for its intensely sweet, saffron-colored flesh and intoxicating fragrance. It has a short season, making it even more precious. Our Himsagar is harvested at peak ripeness and delivered within 48 hours.',
+    image: '/images/downloaded/himsagar.webp',
+    images: ['/images/downloaded/himsagar.webp', '/images/downloaded/farm.webp'],
+    pricePerKg: 320,
+    stock: 80,
+    variety: 'Himsagar',
+    origin: 'Rangpur',
+    tasteProfile: 'Intensely sweet, saffron-yellow flesh with a creamy texture and a signature floral fragrance.',
+    isAvailable: true,
+    variants: [
+      { weight: '1 kg', price: 320 },
+      { weight: '3 kg', price: 900 },
+      { weight: '5 kg', price: 1450 },
+    ],
+  },
+  {
+    id: 'demo-amrapali-1',
+    name: 'Amrapali Mango',
+    description:
+      'A modern hybrid variety prized for its compact size, deep red blush skin, and long shelf life. Amrapali is sweeter than most commercial varieties and has very low fiber content. Grown organically in our partner farms in Rangpur — an ideal choice for gifting or sending to family.',
+    image: '/images/downloaded/mixed.webp',
+    images: ['/images/downloaded/mixed.webp', '/images/downloaded/hero.webp'],
+    pricePerKg: 240,
+    stock: 120,
+    variety: 'Amrapali',
+    origin: 'Rangpur',
+    tasteProfile: 'Very sweet with a hint of tartness, deep orange flesh, smooth and nearly fiberless.',
+    isAvailable: true,
+    variants: [
+      { weight: '1 kg', price: 240 },
+      { weight: '3 kg', price: 680 },
+      { weight: '5 kg', price: 1100 },
+      { weight: '10 kg', price: 2100 },
+    ],
+  },
+  {
+    id: 'demo-gopalbhog-1',
+    name: 'Gopalbhog Mango',
+    description:
+      'One of the earliest-ripening varieties of the season — Gopalbhog arrives before most other mangoes, giving mango lovers their first taste of summer. Small to medium in size, it packs extraordinary sweetness and is considered a delicacy among mango connoisseurs across Bangladesh.',
+    image: '/images/downloaded/farm.webp',
+    images: ['/images/downloaded/farm.webp', '/images/downloaded/hero.webp'],
+    pricePerKg: 350,
+    stock: 60,
+    variety: 'Gopalbhog',
+    origin: 'Rangpur',
+    tasteProfile: 'Exceptionally sweet and fragrant, with a soft melting texture and golden-yellow flesh.',
+    isAvailable: true,
+    variants: [
+      { weight: '1 kg', price: 350 },
+      { weight: '3 kg', price: 980 },
+      { weight: '5 kg', price: 1600 },
+    ],
+  },
+  {
+    id: 'demo-mixed-box-1',
+    name: 'Premium Mixed Mango Box',
+    description:
+      "Can't decide? Get them all! Our curated Premium Mixed Box brings together 3 of our top mango varieties — Harivanga, Himsagar, and Amrapali — hand-selected for peak ripeness and arranged beautifully in an eco-friendly gift box. Perfect for Eid gifts, corporate gifting, or treating your family.",
+    image: '/images/downloaded/mixed.webp',
+    images: [
+      '/images/downloaded/mixed.webp',
+      '/images/downloaded/himsagar.webp',
+      '/images/downloaded/fazli.webp',
+    ],
+    pricePerKg: 300,
+    stock: 50,
+    variety: 'Mixed',
+    origin: 'Rangpur',
+    tasteProfile: 'A curated mix of sweet, fragrant, and rich flavors — something to satisfy every palate.',
+    isAvailable: true,
+    variants: [
+      { weight: '3 kg Box', price: 900 },
+      { weight: '5 kg Box', price: 1450 },
+      { weight: '10 kg Box', price: 2800 },
+    ],
+  },
+];
