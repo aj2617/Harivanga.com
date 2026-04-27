@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, LogOut, Search, Home, ShoppingBag, Sparkles, Package, Phone, ChevronRight } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { BrandLogo } from './BrandLogo';
@@ -32,11 +32,22 @@ export const Navbar: React.FC = () => {
     }`;
 
   const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `relative group flex items-center gap-3.5 pl-4 pr-3 py-3 text-[15px] font-semibold rounded-xl transition-all ${
+    `block px-5 py-3 text-[15px] font-semibold border-l-2 transition-colors ${
       isActive
-        ? 'bg-orange-50 text-mango-orange'
-        : 'text-[#3d2e1e] hover:bg-gray-50'
+        ? 'border-mango-orange text-mango-orange bg-orange-50/60'
+        : 'border-transparent text-[#3d2e1e] hover:text-mango-orange hover:bg-gray-50'
     }`;
+
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
 
   return (
     <nav
@@ -113,90 +124,46 @@ export const Navbar: React.FC = () => {
       </div>
 
       <div
-        className="mobile-menu-panel md:hidden bg-white border-t border-gray-100"
+        className="mobile-menu-backdrop md:hidden"
+        data-open={isMenuOpen}
+        aria-hidden={!isMenuOpen}
+        onClick={() => setIsMenuOpen(false)}
+      />
+
+      <aside
+        className="mobile-menu-panel md:hidden"
         data-open={isMenuOpen}
         aria-hidden={!isMenuOpen}
       >
-        <div className="mobile-menu-panel-inner">
-          <div className="px-4 pt-4 pb-5">
-            <p className="px-2 mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Menu</p>
-            <div className="space-y-0.5">
-              <NavLink to="/" end onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>
-                {({ isActive }) => (
-                  <>
-                    <span className={`flex items-center justify-center w-9 h-9 rounded-lg ${isActive ? 'bg-mango-orange text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-orange-100 group-hover:text-mango-orange'} transition-colors`}>
-                      <Home size={16} />
-                    </span>
-                    <span className="flex-1">Home</span>
-                    <ChevronRight size={16} className="text-gray-300 group-hover:text-gray-400" />
-                  </>
-                )}
-              </NavLink>
-              <NavLink to="/products" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>
-                {({ isActive }) => (
-                  <>
-                    <span className={`flex items-center justify-center w-9 h-9 rounded-lg ${isActive ? 'bg-mango-orange text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-orange-100 group-hover:text-mango-orange'} transition-colors`}>
-                      <ShoppingBag size={16} />
-                    </span>
-                    <span className="flex-1">Shop Mangoes</span>
-                    <ChevronRight size={16} className="text-gray-300 group-hover:text-gray-400" />
-                  </>
-                )}
-              </NavLink>
-              <NavLink to="/about" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>
-                {({ isActive }) => (
-                  <>
-                    <span className={`flex items-center justify-center w-9 h-9 rounded-lg ${isActive ? 'bg-mango-orange text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-orange-100 group-hover:text-mango-orange'} transition-colors`}>
-                      <Sparkles size={16} />
-                    </span>
-                    <span className="flex-1">Our Story</span>
-                    <ChevronRight size={16} className="text-gray-300 group-hover:text-gray-400" />
-                  </>
-                )}
-              </NavLink>
-              <NavLink to="/account" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>
-                {({ isActive }) => (
-                  <>
-                    <span className={`flex items-center justify-center w-9 h-9 rounded-lg ${isActive ? 'bg-mango-orange text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-orange-100 group-hover:text-mango-orange'} transition-colors`}>
-                      <Package size={16} />
-                    </span>
-                    <span className="flex-1">Track Order</span>
-                    <ChevronRight size={16} className="text-gray-300 group-hover:text-gray-400" />
-                  </>
-                )}
-              </NavLink>
-              {user && (
-                <button
-                  onClick={handleLogout}
-                  className="w-full group flex items-center gap-3.5 pl-4 pr-3 py-3 text-[15px] font-semibold text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                >
-                  <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-red-50 text-red-500 group-hover:bg-red-100 transition-colors">
-                    <LogOut size={16} />
-                  </span>
-                  <span className="flex-1 text-left">Logout</span>
-                </button>
-              )}
-            </div>
-
-            <a
-              href="https://wa.me/8801342262821"
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setIsMenuOpen(false)}
-              className="mt-5 flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#fff7ed] to-[#ffedd5] border border-orange-100 px-4 py-3.5 active:scale-[0.99] transition-transform"
-            >
-              <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-mango-orange text-white shrink-0">
-                <Phone size={17} />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-mango-orange">Need Help?</span>
-                <span className="block text-sm font-semibold text-[#3d2e1e] truncate">Chat on WhatsApp</span>
-              </span>
-              <ChevronRight size={18} className="text-mango-orange shrink-0" />
-            </a>
-          </div>
+        <div className="flex items-center justify-between px-5 h-16 border-b border-gray-100">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Menu</span>
+          <button
+            onClick={() => setIsMenuOpen(false)}
+            className="p-2 -mr-2 text-gray-500 hover:text-mango-orange transition-colors"
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
         </div>
-      </div>
+
+        <div className="mobile-menu-panel-inner">
+          <nav className="py-3">
+            <NavLink to="/" end onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Home</NavLink>
+            <NavLink to="/products" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Shop Mangoes</NavLink>
+            <NavLink to="/about" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Our Story</NavLink>
+            <NavLink to="/account" onClick={() => setIsMenuOpen(false)} className={mobileNavLinkClass}>Track Order</NavLink>
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="w-full text-left flex items-center gap-2 px-5 py-3 text-[15px] font-semibold text-red-500 border-l-2 border-transparent hover:bg-red-50 hover:border-red-500 transition-colors"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            )}
+          </nav>
+        </div>
+      </aside>
     </nav>
   );
 };
