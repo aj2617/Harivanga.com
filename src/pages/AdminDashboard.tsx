@@ -1336,6 +1336,25 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 )}
 
+                {canUseDevelopmentFallbacks() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminEmail(LOCAL_DEV_ADMIN_EMAIL);
+                      setAdminPassword(LOCAL_DEV_ADMIN_PASSWORD);
+                      setAdminLoginError(null);
+                      setAdminResetMessage(null);
+                      window.setTimeout(() => {
+                        void handleAdminLogin({ preventDefault: () => {} } as React.FormEvent);
+                      }, 0);
+                    }}
+                    disabled={isAdminAuthenticating || isAdminResetting}
+                    className="w-full rounded-[14px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-sm font-bold text-[#dce7ff] transition hover:bg-[#1c2948] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Sign in as local admin
+                  </button>
+                )}
+
                 <button
                   type="submit"
                   disabled={isAdminAuthenticating}
