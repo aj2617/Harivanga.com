@@ -15,7 +15,9 @@ export function isLocalDevelopmentHost() {
 
   return import.meta.env.DEV && (
     window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.endsWith('.replit.dev') ||
+    window.location.hostname.endsWith('.repl.co')
   );
 }
 
