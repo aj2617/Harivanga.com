@@ -95,122 +95,122 @@ export const AdminChangePasswordPanel: React.FC<AdminChangePasswordPanelProps> =
   };
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-100 px-6 py-4 sm:px-8">
+    <section className="border border-[#f3f4f6] bg-white">
+      <div className="border-b border-[#f3f4f6] px-6 py-4 sm:px-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-mango-orange/10 text-mango-orange">
-            <KeyRound size={18} />
+          <div className="flex h-10 w-10 items-center justify-center bg-[#fff7ed] border border-[#fed7aa] text-[#f97316]">
+            <KeyRound size={16} strokeWidth={1.75} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-mango-dark">Change Password</h2>
-            <p className="text-sm text-gray-500">Update the admin login password for this account.</p>
+            <h2 className="text-lg font-bold tracking-tight text-[#111827]">Change Password</h2>
+            <p className="mt-0.5 text-sm text-gray-500 font-light">Update the admin login password for this account.</p>
           </div>
         </div>
       </div>
 
       <div className="px-6 py-6 sm:px-8">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {disabled && disabledMessage && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+            <div className="border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700 font-medium">
               {disabledMessage}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="sm:col-span-1">
-              <label className="text-xs font-black uppercase tracking-[0.24em] text-gray-500">
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                 Current Password
               </label>
-              <div className="relative mt-2">
+              <div className="relative mt-1.5">
                 <input
                   type={showCurrentPassword ? 'text' : 'password'}
                   required
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 pr-12 text-sm font-semibold text-mango-dark outline-none transition focus:border-mango-orange focus:ring-4 focus:ring-mango-orange/10"
+                  className="h-11 w-full border border-gray-200 bg-white px-4 pr-11 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#f97316] transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword((current) => !current)}
                   aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-mango-dark/60 transition hover:bg-mango-dark/5 hover:text-mango-dark"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 transition hover:text-[#111827]"
                 >
-                  {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showCurrentPassword ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
                 </button>
               </div>
             </div>
 
             <div className="sm:col-span-1">
-              <label className="text-xs font-black uppercase tracking-[0.24em] text-gray-500">
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                 New Password
               </label>
-              <div className="relative mt-2">
+              <div className="relative mt-1.5">
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 pr-12 text-sm font-semibold text-mango-dark outline-none transition focus:border-mango-orange focus:ring-4 focus:ring-mango-orange/10"
+                  className="h-11 w-full border border-gray-200 bg-white px-4 pr-11 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#f97316] transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword((current) => !current)}
                   aria-label={showNewPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-mango-dark/60 transition hover:bg-mango-dark/5 hover:text-mango-dark"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 transition hover:text-[#111827]"
                 >
-                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showNewPassword ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
                 </button>
               </div>
             </div>
 
             <div className="sm:col-span-1">
-              <label className="text-xs font-black uppercase tracking-[0.24em] text-gray-500">
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                 Confirm
               </label>
-              <div className="relative mt-2">
+              <div className="relative mt-1.5">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 pr-12 text-sm font-semibold text-mango-dark outline-none transition focus:border-mango-orange focus:ring-4 focus:ring-mango-orange/10"
+                  className="h-11 w-full border border-gray-200 bg-white px-4 pr-11 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#f97316] transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((current) => !current)}
                   aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-mango-dark/60 transition hover:bg-mango-dark/5 hover:text-mango-dark"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 transition hover:text-[#111827]"
                 >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showConfirmPassword ? <EyeOff size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
                 </button>
               </div>
             </div>
           </div>
 
           {error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+            <div className="border border-red-100 bg-red-50/60 px-4 py-3 text-sm text-red-600 font-medium">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            <div className="border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 font-medium">
               {success}
             </div>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs font-semibold text-gray-500">
+          <div className="flex flex-col gap-3 border-t border-[#f3f4f6] pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-gray-500 font-light">
               Minimum 8 characters. You will be signed out after updating.
             </p>
 
             <button
               type="submit"
               disabled={isSubmitting || disabled}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-mango-dark px-6 text-sm font-black text-white shadow-xl shadow-mango-dark/10 transition hover:bg-mango-dark/95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 bg-[#111827] px-5 py-2.5 text-sm font-semibold tracking-wide text-white hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isSubmitting ? 'Updating...' : 'Update Password'}
-              <ArrowRight size={18} />
+              <ArrowRight size={14} strokeWidth={2} />
             </button>
           </div>
         </form>

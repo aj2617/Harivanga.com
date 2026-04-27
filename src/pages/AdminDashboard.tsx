@@ -1241,96 +1241,116 @@ export const AdminDashboard: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mango-orange"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#f3f4f6] border-t-[#f97316]"></div>
       </div>
     );
   }
 
   if (errorMessage) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h2 className="text-2xl font-bold mb-4">Admin Data Error</h2>
-        <p className="text-gray-500 mb-8 text-center max-w-md">{errorMessage}</p>
-        <button onClick={() => window.location.reload()} className="text-mango-orange font-bold">Reload Page</button>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 text-[#111827]">
+        <h2 className="text-2xl font-bold tracking-tight mb-3">Admin Data Error</h2>
+        <p className="text-gray-500 mb-8 text-center max-w-md font-light">{errorMessage}</p>
+        <button onClick={() => window.location.reload()} className="border border-[#111827] bg-white px-5 py-2.5 text-sm font-semibold text-[#111827] hover:bg-[#fafaf9] transition-colors">Reload Page</button>
       </div>
     );
   }
 
   if (!hasAdminAccess) {
     return (
-      <div className="min-h-screen bg-[#0c1326] px-4 py-4 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-md items-center justify-center">
-          <div className="w-full rounded-[28px] border border-white/8 bg-[#101933] p-3 shadow-[0_30px_120px_rgba(2,6,23,0.45)] sm:p-5">
-            <div className="rounded-[24px] border border-white/6 bg-[#11192f] px-4 py-6 sm:px-6 sm:py-7">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[18px] border border-[#7b2638] bg-[#2a1830] text-[#ff4d4f] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                <Lock size={24} strokeWidth={2.1} />
+      <div className="min-h-screen bg-white text-[#111827] font-sans px-4 py-12 sm:px-6 lg:px-8 flex items-center justify-center">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-10">
+            <a
+              href="/"
+              onClick={(e) => { e.preventDefault(); navigate('/'); }}
+              className="text-2xl font-bold tracking-tight inline-block"
+            >
+              HARIVANGA
+            </a>
+            <p className="mt-2 text-xs uppercase tracking-[0.24em] text-gray-400 font-medium">Admin</p>
+          </div>
+
+          <div className="border border-[#f3f4f6] bg-white p-8 sm:p-10">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold tracking-tight text-[#111827]">Sign in</h1>
+              <p className="mt-1.5 text-sm text-gray-500 font-light">Enter your admin credentials to continue.</p>
+            </div>
+
+            <form onSubmit={handleAdminLogin} className="space-y-5">
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className="h-11 w-full border border-gray-200 bg-white px-4 text-sm text-[#111827] outline-none transition focus:border-[#f97316]"
+                />
               </div>
 
-              <div className="mt-4 text-center">
-                <h1 className="text-[2rem] font-black tracking-tight text-white">Admin Portal</h1>
-                <p className="mt-1.5 text-sm text-[#6f86b0]">Enter club management password</p>
-              </div>
-
-              <form onSubmit={handleAdminLogin} className="mt-6 space-y-5">
-                <div>
-                  <label className="text-xs font-black uppercase tracking-[0.24em] text-[#6d7ea5]">
-                    Admin Email
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Password
                   </label>
+                  <button
+                    type="button"
+                    onClick={handleAdminPasswordReset}
+                    disabled={isAdminResetting || isAdminAuthenticating}
+                    className="text-xs font-medium text-gray-500 hover:text-[#f97316] transition-colors disabled:opacity-50"
+                  >
+                    {isAdminResetting ? 'Sending...' : 'Forgot?'}
+                  </button>
+                </div>
+                <div className="relative">
                   <input
-                    type="email"
+                    type={showAdminPassword ? 'text' : 'password'}
                     required
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    className="mt-2.5 h-12 w-full rounded-[14px] border border-[#ff4d4f] bg-[#dfe7f5] px-4 text-sm text-black outline-none transition placeholder:text-black/45 focus:border-[#ff6b6d] focus:ring-4 focus:ring-[#ff4d4f]/10"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="h-11 w-full border border-gray-200 bg-white px-4 pr-11 text-sm text-[#111827] outline-none transition focus:border-[#f97316]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword((current) => !current)}
+                    aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 transition hover:text-[#111827]"
+                  >
+                    {showAdminPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
+              </div>
 
-                <div>
-                  <label className="text-xs font-black uppercase tracking-[0.24em] text-[#6d7ea5]">
-                    Master Password
-                  </label>
-                  <div className="relative mt-2.5">
-                    <input
-                      type={showAdminPassword ? 'text' : 'password'}
-                      required
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      className="h-12 w-full rounded-[14px] border border-white/8 bg-[#dfe7f5] px-4 pr-12 text-center text-sm font-bold tracking-[0.2em] text-black outline-none transition placeholder:text-black/35 focus:border-[#ff6b6d] focus:ring-4 focus:ring-[#ff4d4f]/10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowAdminPassword((current) => !current)}
-                      aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-black/60 transition hover:bg-black/5 hover:text-black"
-                    >
-                      {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
+              {adminLoginError && (
+                <div className="border border-red-100 bg-red-50/60 px-4 py-3 text-sm text-red-600">
+                  {adminLoginError}
                 </div>
+              )}
 
-                {adminLoginError && (
-                  <div className="rounded-[18px] border border-[#ff4d4f]/25 bg-[#3a1d28] px-4 py-3 text-sm font-medium text-[#ffb7b8]">
-                    {adminLoginError}
+              {adminResetMessage && (
+                <div className="border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-700">
+                  {adminResetMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isAdminAuthenticating}
+                className="flex h-11 w-full items-center justify-center bg-[#111827] text-sm font-semibold tracking-wide text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isAdminAuthenticating ? 'Signing in...' : 'Sign in'}
+              </button>
+
+              {canUseDevelopmentFallbacks() && (
+                <>
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
+                    <div className="relative flex justify-center"><span className="bg-white px-3 text-[10px] uppercase tracking-widest text-gray-400 font-medium">Local dev</span></div>
                   </div>
-                )}
-
-                {adminResetMessage && (
-                  <div className="rounded-[18px] border border-emerald-200/20 bg-emerald-900/20 px-4 py-3 text-sm font-medium text-emerald-100">
-                    {adminResetMessage}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleAdminPasswordReset}
-                  disabled={isAdminResetting || isAdminAuthenticating}
-                  className="w-full text-center text-xs font-semibold text-[#8da0c5] transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isAdminResetting ? 'Sending reset email...' : 'Forgot password? Send reset link'}
-                </button>
-
-                {canUseDevelopmentFallbacks() && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1341,36 +1361,25 @@ export const AdminDashboard: React.FC = () => {
                       void handleAdminLogin({ preventDefault: () => {} } as React.FormEvent);
                     }}
                     disabled={isAdminAuthenticating || isAdminResetting}
-                    className="w-full rounded-[14px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-sm font-bold text-[#dce7ff] transition hover:bg-[#1c2948] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex h-11 w-full items-center justify-center border border-[#111827] bg-white px-4 text-sm font-semibold tracking-wide text-[#111827] transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Sign in as local admin
                   </button>
-                )}
-
-                {canUseDevelopmentFallbacks() && (
-                  <div className="rounded-[16px] border border-[#7ea1ff]/20 bg-[#16213d] px-4 py-3 text-xs font-medium text-[#b8c7ea]">
-                    Local test login: <span className="font-bold text-white">{LOCAL_DEV_ADMIN_EMAIL}</span> / <span className="font-bold text-white">{LOCAL_DEV_ADMIN_PASSWORD}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isAdminAuthenticating}
-                  className="flex h-14 w-full items-center justify-center rounded-[14px] border border-white/8 bg-[#202d45] text-lg font-black text-white transition hover:bg-[#25334f] disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {isAdminAuthenticating ? 'Authenticating...' : 'Authenticate'}
-                </button>
-              </form>
-
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="mt-4 w-full text-center text-xs font-semibold text-[#8da0c5] transition hover:text-white"
-              >
-                Back to Home
-              </button>
-            </div>
+                  <p className="text-[11px] text-center text-gray-400 font-light">
+                    {LOCAL_DEV_ADMIN_EMAIL} / {LOCAL_DEV_ADMIN_PASSWORD}
+                  </p>
+                </>
+              )}
+            </form>
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="mt-6 w-full text-center text-xs font-medium text-gray-500 hover:text-[#111827] transition-colors"
+          >
+            ← Back to Home
+          </button>
         </div>
       </div>
     );
@@ -1391,165 +1400,175 @@ export const AdminDashboard: React.FC = () => {
 
   const formatCurrency = (value: number) => `\u09F3${value.toLocaleString()}`;
   const getOrderStatusClasses = (status: OrderStatus) => {
-    if (status === 'Delivered') return 'bg-green-50 text-green-600';
-    if (status === 'Out for Delivery') return 'bg-blue-50 text-blue-600';
-    if (status === 'Confirmed') return 'bg-mango-yellow/10 text-mango-yellow';
-    if (status === 'Cancelled') return 'bg-red-50 text-red-500';
-    return 'bg-gray-50 text-gray-500';
+    if (status === 'Delivered') return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+    if (status === 'Out for Delivery') return 'bg-blue-50 text-blue-700 border border-blue-100';
+    if (status === 'Confirmed') return 'bg-amber-50 text-amber-700 border border-amber-100';
+    if (status === 'Cancelled') return 'bg-red-50 text-red-600 border border-red-100';
+    return 'bg-[#fff7ed] text-[#f97316] border border-[#fed7aa]';
   };
   const getPaymentStatusClasses = (paymentStatus: PaymentStatus) => {
-    if (paymentStatus === 'Received') return 'bg-green-50 text-green-600';
-    if (paymentStatus === 'Rejected') return 'bg-red-50 text-red-500';
-    if (paymentStatus === 'Awaiting Verification') return 'bg-amber-50 text-amber-600';
-    return 'bg-gray-50 text-gray-500';
+    if (paymentStatus === 'Received') return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+    if (paymentStatus === 'Rejected') return 'bg-red-50 text-red-600 border border-red-100';
+    if (paymentStatus === 'Awaiting Verification') return 'bg-amber-50 text-amber-700 border border-amber-100';
+    return 'bg-[#fafaf9] text-gray-600 border border-[#f3f4f6]';
   };
   return (
     <>
-    <div className="font-admin min-h-screen bg-gray-50 flex flex-col lg:flex-row">
+    <div className="font-admin min-h-screen bg-white text-[#111827] flex flex-col lg:flex-row">
       {/* Sidebar */}
-      <aside className="w-64 bg-mango-dark text-white hidden lg:flex flex-col sticky top-0 h-screen">
-        <div className="p-8">
-          <div className="mb-12">
-            <BrandLogo size="md" dark={false} />
-          </div>
+      <aside className="w-60 bg-white text-[#111827] hidden lg:flex flex-col sticky top-0 h-screen border-r border-[#f3f4f6]">
+        <div className="px-6 pt-8 pb-4">
+          <a
+            href="/"
+            onClick={(e) => { e.preventDefault(); navigate('/'); }}
+            className="text-xl font-bold tracking-tight inline-block"
+          >
+            HARIVANGA
+          </a>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-gray-400 font-medium">Admin</p>
+        </div>
 
-          <nav className="space-y-2">
+        <div className="px-3 mt-4 flex-1">
+          <nav className="space-y-0.5">
             <button
               onClick={() => navigate('/')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-500 hover:text-[#111827] hover:bg-[#fafaf9] transition-colors"
             >
-              <House size={20} /> Home
+              <House size={16} strokeWidth={1.75} /> Home
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'overview' ? 'bg-mango-orange text-white' : 'text-gray-400 hover:bg-white/5'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${activeTab === 'overview' ? 'text-[#111827] bg-[#fafaf9]' : 'text-gray-500 hover:text-[#111827] hover:bg-[#fafaf9]'}`}
             >
-              <LayoutDashboard size={20} /> Overview
+              <LayoutDashboard size={16} strokeWidth={1.75} /> Overview
+              {activeTab === 'overview' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#f97316]" />}
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('products')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'products' ? 'bg-mango-orange text-white' : 'text-gray-400 hover:bg-white/5'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${activeTab === 'products' ? 'text-[#111827] bg-[#fafaf9]' : 'text-gray-500 hover:text-[#111827] hover:bg-[#fafaf9]'}`}
             >
-              <Package size={20} /> Products
+              <Package size={16} strokeWidth={1.75} /> Products
+              {activeTab === 'products' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#f97316]" />}
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('orders')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'orders' ? 'bg-mango-orange text-white' : 'text-gray-400 hover:bg-white/5'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${activeTab === 'orders' ? 'text-[#111827] bg-[#fafaf9]' : 'text-gray-500 hover:text-[#111827] hover:bg-[#fafaf9]'}`}
             >
-              <ShoppingBag size={20} /> Orders
+              <ShoppingBag size={16} strokeWidth={1.75} /> Orders
+              {activeTab === 'orders' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#f97316]" />}
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'settings' ? 'bg-mango-orange text-white' : 'text-gray-400 hover:bg-white/5'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${activeTab === 'settings' ? 'text-[#111827] bg-[#fafaf9]' : 'text-gray-500 hover:text-[#111827] hover:bg-[#fafaf9]'}`}
             >
-              <SettingsIcon size={20} /> Settings
+              <SettingsIcon size={16} strokeWidth={1.75} /> Settings
+              {activeTab === 'settings' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#f97316]" />}
             </button>
           </nav>
-        </div>
-        
-        {/* Notification Bell — Desktop Sidebar */}
-        <div className="px-8 pb-4 relative">
-          <button
-            onClick={() => setShowNotifPanel((v) => !v)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 transition-all relative"
-          >
-            <span className="relative">
-              <Bell size={20} />
-              {orderNotifications.filter((n) => !n.seen).length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-red-500 flex items-center justify-center text-[9px] font-black text-white px-0.5">
-                  {orderNotifications.filter((n) => !n.seen).length > 9 ? '9+' : orderNotifications.filter((n) => !n.seen).length}
-                </span>
-              )}
-            </span>
-            Notifications
-          </button>
 
-          {showNotifPanel && (
-            <div className="absolute bottom-full left-4 right-4 mb-2 z-50 bg-[#1a1510] border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[420px] flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <span className="text-xs font-black uppercase tracking-wider text-white/70">Recent Orders</span>
-                {orderNotifications.some((n) => !n.seen) && (
-                  <button
-                    onClick={() => setOrderNotifications((prev) => prev.map((n) => ({ ...n, seen: true })))}
-                    className="flex items-center gap-1 text-[10px] font-bold text-mango-orange hover:text-orange-400 transition-colors"
-                  >
-                    <CheckCheck size={12} /> Mark all read
-                  </button>
+          {/* Notification Bell — Desktop Sidebar */}
+          <div className="mt-4 pt-4 border-t border-[#f3f4f6] relative">
+            <button
+              onClick={() => setShowNotifPanel((v) => !v)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-500 hover:text-[#111827] hover:bg-[#fafaf9] transition-colors relative"
+            >
+              <span className="relative">
+                <Bell size={16} strokeWidth={1.75} />
+                {orderNotifications.filter((n) => !n.seen).length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 rounded-full bg-[#f97316] flex items-center justify-center text-[9px] font-bold text-white px-0.5">
+                    {orderNotifications.filter((n) => !n.seen).length > 9 ? '9+' : orderNotifications.filter((n) => !n.seen).length}
+                  </span>
                 )}
-              </div>
-              <div className="overflow-y-auto flex-1">
-                {orderNotifications.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-white/30">No new orders yet</div>
-                ) : (
-                  orderNotifications.map((n) => (
+              </span>
+              Notifications
+            </button>
+
+            {showNotifPanel && (
+              <div className="absolute bottom-full left-2 right-2 mb-2 z-50 bg-white border border-[#f3f4f6] shadow-lg overflow-hidden max-h-[420px] flex flex-col">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#f3f4f6]">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Recent Orders</span>
+                  {orderNotifications.some((n) => !n.seen) && (
                     <button
-                      key={n.id}
-                      onClick={() => {
-                        setOrderNotifications((prev) => prev.map((item) => item.id === n.id ? { ...item, seen: true } : item));
-                        setActiveTab('orders');
-                        setShowNotifPanel(false);
-                      }}
-                      className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${!n.seen ? 'bg-mango-orange/5' : ''}`}
+                      onClick={() => setOrderNotifications((prev) => prev.map((n) => ({ ...n, seen: true })))}
+                      className="flex items-center gap-1 text-[10px] font-medium text-[#f97316] hover:text-[#ea580c] transition-colors"
                     >
-                      {!n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-mango-orange" />}
-                      {n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-transparent" />}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{n.customerName}</p>
-                        <p className="text-[11px] text-white/50">৳{n.amount.toLocaleString()} · {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
-                      <ArrowRight size={12} className="text-white/30 shrink-0 mt-1" />
+                      <CheckCheck size={12} /> Mark all read
                     </button>
-                  ))
-                )}
+                  )}
+                </div>
+                <div className="overflow-y-auto flex-1">
+                  {orderNotifications.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-gray-400 font-light">No new orders yet</div>
+                  ) : (
+                    orderNotifications.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          setOrderNotifications((prev) => prev.map((item) => item.id === n.id ? { ...item, seen: true } : item));
+                          setActiveTab('orders');
+                          setShowNotifPanel(false);
+                        }}
+                        className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-[#f3f4f6] hover:bg-[#fafaf9] transition-colors ${!n.seen ? 'bg-[#fff7ed]/40' : ''}`}
+                      >
+                        {!n.seen ? <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-[#f97316]" /> : <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-transparent" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-[#111827] truncate">{n.customerName}</p>
+                          <p className="text-[11px] text-gray-500 font-light">৳{n.amount.toLocaleString()} · {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <ArrowRight size={12} className="text-gray-300 shrink-0 mt-1" />
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="mt-auto p-8 border-t border-white/5">
+        <div className="mt-auto px-6 py-6 border-t border-[#f3f4f6]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-mango-orange rounded-full flex items-center justify-center font-bold">A</div>
-            <div>
-              <p className="text-sm font-bold">Harivanga.com Admin</p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest">Super Admin</p>
+            <div className="w-9 h-9 bg-[#fafaf9] border border-[#f3f4f6] flex items-center justify-center font-bold text-sm text-[#111827]">A</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate text-[#111827]">Admin</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Super Admin</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => void handleAdminLogout()}
-            className="mt-5 w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white"
+            className="mt-4 w-full flex items-center justify-center gap-2 border border-gray-200 px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:border-[#111827] hover:text-[#111827]"
           >
-            <LogOut size={18} />
-            Logout
+            <LogOut size={14} />
+            Sign out
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-grow overflow-y-auto">
-        <div className="lg:hidden bg-mango-dark text-white px-4 py-5 sticky top-0 z-20 shadow-lg">
-          <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="lg:hidden bg-white/90 backdrop-blur-md border-b border-[#f3f4f6] px-4 py-4 sticky top-0 z-20">
+          <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-white/50 font-bold">Admin</p>
-              <h1 className="text-2xl font-black">{activeTabLabel}</h1>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-gray-400 font-medium">Admin</p>
+              <h1 className="text-xl font-bold tracking-tight text-[#111827]">{activeTabLabel}</h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => navigate('/')}
-                className="inline-flex items-center justify-center rounded-2xl bg-white/10 p-3 text-white transition hover:bg-white/15"
+                className="inline-flex items-center justify-center p-2.5 text-gray-500 transition hover:text-[#111827] hover:bg-[#fafaf9]"
                 aria-label="Go to home page"
               >
-                <House size={18} />
+                <House size={16} strokeWidth={1.75} />
               </button>
               <button
                 type="button"
                 onClick={() => setShowNotifPanel((v) => !v)}
-                className="relative inline-flex items-center justify-center rounded-2xl bg-white/10 p-3 text-white transition hover:bg-white/15"
+                className="relative inline-flex items-center justify-center p-2.5 text-gray-500 transition hover:text-[#111827] hover:bg-[#fafaf9]"
                 aria-label="Notifications"
               >
-                <Bell size={18} />
+                <Bell size={16} strokeWidth={1.75} />
                 {orderNotifications.filter((n) => !n.seen).length > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] rounded-full bg-red-500 flex items-center justify-center text-[9px] font-black text-white px-0.5">
+                  <span className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full bg-[#f97316] flex items-center justify-center text-[9px] font-bold text-white px-0.5">
                     {orderNotifications.filter((n) => !n.seen).length > 9 ? '9+' : orderNotifications.filter((n) => !n.seen).length}
                   </span>
                 )}
@@ -1557,44 +1576,40 @@ export const AdminDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => void handleAdminLogout()}
-                className="inline-flex items-center justify-center rounded-2xl bg-white/10 p-3 text-white transition hover:bg-white/15"
+                className="inline-flex items-center justify-center p-2.5 text-gray-500 transition hover:text-[#111827] hover:bg-[#fafaf9]"
                 aria-label="Logout"
               >
-                <LogOut size={18} />
+                <LogOut size={16} strokeWidth={1.75} />
               </button>
-              <div className="text-right">
-                <p className="text-xs text-white/50">Today</p>
-                <p className="text-sm font-semibold">{formatShortMonthDay(new Date())}</p>
-              </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 border border-[#f3f4f6]">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-xs font-bold transition-all ${activeTab === 'overview' ? 'bg-mango-orange text-white' : 'bg-white/5 text-white/70'}`}
+              className={`flex flex-col items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-semibold tracking-wide transition-colors border-r border-[#f3f4f6] last:border-r-0 ${activeTab === 'overview' ? 'bg-[#fafaf9] text-[#111827]' : 'text-gray-500 hover:text-[#111827]'}`}
             >
-              <LayoutDashboard size={18} />
+              <LayoutDashboard size={15} strokeWidth={1.75} />
               Overview
             </button>
             <button
               onClick={() => setActiveTab('products')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-xs font-bold transition-all ${activeTab === 'products' ? 'bg-mango-orange text-white' : 'bg-white/5 text-white/70'}`}
+              className={`flex flex-col items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-semibold tracking-wide transition-colors border-r border-[#f3f4f6] last:border-r-0 ${activeTab === 'products' ? 'bg-[#fafaf9] text-[#111827]' : 'text-gray-500 hover:text-[#111827]'}`}
             >
-              <Package size={18} />
+              <Package size={15} strokeWidth={1.75} />
               Products
             </button>
             <button
               onClick={() => setActiveTab('orders')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-mango-orange text-white' : 'bg-white/5 text-white/70'}`}
+              className={`flex flex-col items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-semibold tracking-wide transition-colors border-r border-[#f3f4f6] last:border-r-0 ${activeTab === 'orders' ? 'bg-[#fafaf9] text-[#111827]' : 'text-gray-500 hover:text-[#111827]'}`}
             >
-              <ShoppingBag size={18} />
+              <ShoppingBag size={15} strokeWidth={1.75} />
               Orders
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-xs font-bold transition-all ${activeTab === 'settings' ? 'bg-mango-orange text-white' : 'bg-white/5 text-white/70'}`}
+              className={`flex flex-col items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-semibold tracking-wide transition-colors ${activeTab === 'settings' ? 'bg-[#fafaf9] text-[#111827]' : 'text-gray-500 hover:text-[#111827]'}`}
             >
-              <SettingsIcon size={18} />
+              <SettingsIcon size={15} strokeWidth={1.75} />
               Settings
             </button>
           </div>
@@ -1602,127 +1617,130 @@ export const AdminDashboard: React.FC = () => {
 
         <div className="p-4 sm:p-6 lg:p-12">
         {activeTab === 'overview' && (
-          <section className="space-y-5 sm:space-y-8">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h1 className="text-xl sm:text-3xl font-black tracking-tight text-mango-dark">Overview</h1>
+          <section className="space-y-8 sm:space-y-10">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between border-b border-[#f3f4f6] pb-6">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.24em] text-gray-400 font-medium">Dashboard</p>
+                <h1 className="mt-1 text-3xl sm:text-4xl font-bold tracking-tighter text-[#111827]">Overview</h1>
+              </div>
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
                 {canUseDevelopmentFallbacks() && (
-                  <button 
+                  <button
                     onClick={handleSeedDatabase}
-                    className="text-xs font-bold text-mango-orange hover:underline"
+                    className="text-xs font-medium text-[#f97316] hover:text-[#ea580c] transition-colors"
                   >
                     Seed Database
                   </button>
                 )}
-                <div className="text-xs text-gray-400 font-semibold sm:text-sm sm:font-medium">{formatLongDate(new Date())}</div>
+                <div className="text-xs text-gray-500 font-medium">{formatLongDate(new Date())}</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 sm:mb-4 sm:h-11 sm:w-11">
-                  <ShoppingBag size={20} className="sm:hidden" />
-                  <ShoppingBag size={24} className="hidden sm:block" />
+            <div className="grid grid-cols-2 gap-px bg-[#f3f4f6] border border-[#f3f4f6] xl:grid-cols-4">
+              <div className="bg-white p-5 sm:p-6">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <ShoppingBag size={14} strokeWidth={1.75} />
+                  <p className="text-[11px] font-medium uppercase tracking-wider">Today's Orders</p>
                 </div>
-                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Today's Orders</p>
-                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{todayOrders.length}</h3>
+                <h3 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tighter text-[#111827]">{todayOrders.length}</h3>
               </div>
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 sm:mb-4 sm:h-11 sm:w-11">
-                  <Package size={20} className="sm:hidden" />
-                  <Package size={24} className="hidden sm:block" />
+              <div className="bg-white p-5 sm:p-6">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Package size={14} strokeWidth={1.75} />
+                  <p className="text-[11px] font-medium uppercase tracking-wider">Total Orders</p>
                 </div>
-                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Total Orders</p>
-                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{totalOrders}</h3>
+                <h3 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tighter text-[#111827]">{totalOrders}</h3>
               </div>
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-green-50 text-green-600 sm:mb-4 sm:h-11 sm:w-11">
-                  <TrendingUp size={20} className="sm:hidden" />
-                  <TrendingUp size={24} className="hidden sm:block" />
+              <div className="bg-white p-5 sm:p-6">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <TrendingUp size={14} strokeWidth={1.75} />
+                  <p className="text-[11px] font-medium uppercase tracking-wider">Today's Revenue</p>
                 </div>
-                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Today's Revenue</p>
-                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{formatCurrency(todayRevenue)}</h3>
+                <h3 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tighter text-[#111827]">{formatCurrency(todayRevenue)}</h3>
               </div>
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 sm:mb-4 sm:h-11 sm:w-11">
-                  <TrendingUp size={20} className="sm:hidden" />
-                  <TrendingUp size={24} className="hidden sm:block" />
+              <div className="bg-white p-5 sm:p-6">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <TrendingUp size={14} strokeWidth={1.75} />
+                  <p className="text-[11px] font-medium uppercase tracking-wider">Total Revenue</p>
                 </div>
-                <p className="text-xs font-semibold text-gray-400 sm:text-sm sm:font-medium">Total Revenue</p>
-                <h3 className="mt-1 text-2xl font-black text-mango-dark sm:mt-2 sm:text-3xl">{formatCurrency(totalRevenue)}</h3>
+                <h3 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tighter text-[#111827]">{formatCurrency(totalRevenue)}</h3>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-[28px] sm:p-7">
-              <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <div>
+              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                 <div>
-                  <h3 className="text-sm font-black text-mango-dark sm:text-lg sm:font-bold">Recent Orders</h3>
-                  <p className="mt-1 text-[13px] text-gray-500 sm:text-sm">Latest orders with the key details only.</p>
+                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827]">Recent Orders</h3>
+                  <p className="mt-1 text-sm text-gray-500 font-light">Latest orders with the key details only.</p>
                 </div>
-                <div className="inline-flex w-fit rounded-full bg-orange-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-mango-orange sm:px-4 sm:py-2 sm:text-xs sm:font-bold">
+                <div className="inline-flex w-fit items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#f97316] border border-[#fed7aa] bg-[#fff7ed]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#f97316]" />
                   {attentionOrders} require attention
                 </div>
               </div>
-              <div className="space-y-2 sm:space-y-3">
+              <div className="border border-[#f3f4f6] divide-y divide-[#f3f4f6]">
                 {recentOrders.map((order, index) => (
-                  <div key={order.id} className={`flex flex-col gap-2 rounded-2xl bg-gray-50 px-4 py-3 sm:gap-3 sm:py-4 sm:flex-row sm:items-center sm:justify-between ${index >= 1 ? 'hidden sm:flex' : ''}`}>
-                    <div className="min-w-0">
-                      <p className="truncate text-[13px] font-black text-mango-dark sm:text-base sm:font-bold">#{order.id.slice(-6).toUpperCase()} · {order.customerName}</p>
-                      <p className="mt-1 text-[11px] font-semibold text-gray-500 sm:text-xs sm:font-normal">{formatOrderTimestamp(new Date(order.createdAt))}</p>
-                      <p className="mt-1 hidden text-xs text-gray-500 sm:block">Phone: {order.customerPhone}</p>
-                      <p className="mt-1 hidden text-xs text-gray-500 sm:block">Address: {order.deliveryAddress}</p>
+                  <div key={order.id} className={`flex flex-col gap-2 bg-white px-4 sm:px-5 py-4 sm:gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-[#fafaf9] transition-colors ${index >= 1 ? 'hidden sm:flex' : ''}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[#111827]">#{order.id.slice(-6).toUpperCase()} · {order.customerName}</p>
+                      <p className="mt-1 text-xs font-light text-gray-500">{formatOrderTimestamp(new Date(order.createdAt))}</p>
+                      <p className="mt-1 hidden text-xs text-gray-500 font-light sm:block">Phone: {order.customerPhone}</p>
+                      <p className="mt-0.5 hidden text-xs text-gray-500 font-light sm:block">Address: {order.deliveryAddress}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[13px] font-black text-mango-dark sm:text-base sm:font-bold">{formatCurrency(order.total)}</p>
-                      <p className={`text-[11px] font-bold uppercase tracking-wider ${order.status === 'Delivered' ? 'text-green-600' : order.status === 'Out for Delivery' ? 'text-blue-600' : order.status === 'Confirmed' ? 'text-mango-yellow' : order.status === 'Cancelled' ? 'text-red-500' : 'text-gray-500'}`}>
+                      <p className="text-base font-bold tracking-tight text-[#111827]">{formatCurrency(order.total)}</p>
+                      <p className={`mt-1 text-[10px] font-semibold uppercase tracking-wider ${order.status === 'Delivered' ? 'text-emerald-600' : order.status === 'Out for Delivery' ? 'text-blue-600' : order.status === 'Confirmed' ? 'text-amber-600' : order.status === 'Cancelled' ? 'text-red-500' : 'text-gray-500'}`}>
                         {order.status}
                       </p>
                     </div>
                   </div>
                 ))}
+                {recentOrders.length === 0 && (
+                  <div className="bg-white px-6 py-14 text-center">
+                    <p className="text-base font-semibold text-[#111827]">No orders yet</p>
+                    <p className="mt-2 text-sm text-gray-500 font-light">New orders will appear here once customers start checking out.</p>
+                  </div>
+                )}
               </div>
-              {recentOrders.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-10 text-center">
-                  <p className="text-base font-bold text-mango-dark">No orders yet</p>
-                  <p className="mt-2 text-sm text-gray-500">New orders will appear here once customers start checking out.</p>
-                </div>
-              )}
             </div>
           </section>
         )}
 
         {activeTab === 'products' && (
           <section className="space-y-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <h1 className="text-2xl sm:text-3xl font-black text-mango-dark">Products</h1>
-              <button 
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-[#f3f4f6] pb-6">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.24em] text-gray-400 font-medium">Catalog</p>
+                <h1 className="mt-1 text-3xl sm:text-4xl font-bold tracking-tighter text-[#111827]">Products</h1>
+              </div>
+              <button
                 onClick={() => {
                   setEditingProduct(null);
                   setProductForm(createEmptyProductForm());
                   setProductSubmitError(null);
                   setIsProductModalOpen(true);
                 }}
-                className="w-full sm:w-auto bg-mango-orange text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-mango-orange/20"
+                className="w-full sm:w-auto bg-[#111827] text-white px-5 py-2.5 text-sm font-semibold tracking-wide flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
               >
-                <Plus size={20} /> Add New Product
+                <Plus size={16} strokeWidth={2} /> Add Product
               </button>
             </div>
 
             <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-2 sm:gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
               <div className="relative min-w-0">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
                   value={productSearchQuery}
                   onChange={(e) => setProductSearchQuery(e.target.value)}
                   placeholder="Search by product name"
-                  className="w-full rounded-2xl border border-gray-200 bg-white py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                  className="w-full border border-gray-200 bg-white h-10 pl-10 pr-4 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#f97316] transition"
                 />
               </div>
               <select
                 value={productStatusFilter}
                 onChange={(e) => setProductStatusFilter(e.target.value as 'all' | 'inSeason' | 'outOfSeason')}
-                className="min-w-0 rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                className="min-w-0 border border-gray-200 bg-white px-3 h-10 text-sm text-[#111827] focus:outline-none focus:border-[#f97316] transition"
               >
                 <option value="all">All statuses</option>
                 <option value="inSeason">In season</option>
@@ -1730,23 +1748,23 @@ export const AdminDashboard: React.FC = () => {
               </select>
             </div>
 
-            <div className="hidden md:block bg-white rounded-3xl shadow-sm border border-gray-100 overflow-x-auto">
+            <div className="hidden md:block bg-white border border-[#f3f4f6] overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="border-b border-[#f3f4f6]">
                   <tr>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Product</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Variety</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Price</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Product</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Variety</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Price</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[#f3f4f6]">
                   {products.map((product) => (
-                    <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-8 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100">
+                    <tr key={product.id} className="hover:bg-[#fafaf9] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 overflow-hidden bg-[#fafaf9] border border-[#f3f4f6]">
                             <img
                               src={getThumbnailImageSrc(product.image)}
                               alt={product.name}
@@ -1757,34 +1775,37 @@ export const AdminDashboard: React.FC = () => {
                               height={96}
                             />
                           </div>
-                          <span className="font-bold text-mango-dark">{product.name}</span>
+                          <span className="font-semibold text-sm text-[#111827]">{product.name}</span>
                         </div>
                       </td>
-                      <td className="px-8 py-4 text-sm text-gray-500">{product.variety}</td>
-                      <td className="px-8 py-4 font-bold">{formatCurrency(product.pricePerKg)}</td>
-                      <td className="px-8 py-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${product.isAvailable ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                      <td className="px-6 py-4 text-sm text-gray-500 font-light">{product.variety}</td>
+                      <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{formatCurrency(product.pricePerKg)}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider ${product.isAvailable ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-gray-500 bg-[#fafaf9] border border-[#f3f4f6]'}`}>
+                          <span className={`h-1 w-1 rounded-full ${product.isAvailable ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                           {product.isAvailable ? 'In Season' : 'Out of Season'}
                         </span>
                       </td>
-                      <td className="px-8 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-1">
+                          <button
                             onClick={() => {
                               setEditingProduct(product);
                               setProductForm(buildProductForm(product));
                               setProductSubmitError(null);
                               setIsProductModalOpen(true);
                             }}
-                            className="p-2 text-gray-400 hover:text-mango-orange transition-colors"
+                            className="p-2 text-gray-400 hover:text-[#111827] transition-colors"
+                            aria-label="Edit"
                           >
-                            <Edit2 size={18} />
+                            <Edit2 size={15} strokeWidth={1.75} />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDeleteProduct(product.id)}
                             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            aria-label="Delete"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={15} strokeWidth={1.75} />
                           </button>
                         </div>
                       </td>
@@ -1794,11 +1815,11 @@ export const AdminDashboard: React.FC = () => {
               </table>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:hidden">
+            <div className="grid grid-cols-1 gap-3 md:hidden">
               {products.map((product) => (
-                <div key={product.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4">
+                <div key={product.id} className="bg-white border border-[#f3f4f6] p-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 shrink-0">
+                    <div className="w-16 h-16 overflow-hidden bg-[#fafaf9] border border-[#f3f4f6] shrink-0">
                       <img
                         src={getThumbnailImageSrc(product.image)}
                         alt={product.name}
@@ -1812,20 +1833,19 @@ export const AdminDashboard: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="font-bold text-mango-dark truncate">{product.name}</h3>
-                          <p className="text-sm text-gray-500">{product.variety}</p>
+                          <h3 className="font-semibold text-sm text-[#111827] truncate">{product.name}</h3>
+                          <p className="text-xs text-gray-500 font-light mt-0.5">{product.variety}</p>
                         </div>
-                        <span className={`shrink-0 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${product.isAvailable ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                        <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${product.isAvailable ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-gray-500 bg-[#fafaf9] border border-[#f3f4f6]'}`}>
+                          <span className={`h-1 w-1 rounded-full ${product.isAvailable ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                           {product.isAvailable ? 'In Season' : 'Out'}
                         </span>
                       </div>
-                      <div className="grid grid-cols-1 gap-3 mt-4 text-sm">
-                        <div className="rounded-2xl bg-gray-50 px-3 py-2">
-                          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Price</p>
-                          <p className="font-bold">{formatCurrency(product.pricePerKg)}</p>
-                        </div>
+                      <div className="mt-3">
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Price</p>
+                        <p className="text-base font-bold tracking-tight text-[#111827] mt-0.5">{formatCurrency(product.pricePerKg)}</p>
                       </div>
-                      <div className="mt-4 flex gap-2">
+                      <div className="mt-3 flex gap-2">
                         <button
                           onClick={() => {
                             setEditingProduct(product);
@@ -1833,13 +1853,13 @@ export const AdminDashboard: React.FC = () => {
                             setProductSubmitError(null);
                             setIsProductModalOpen(true);
                           }}
-                          className="flex-1 rounded-2xl bg-mango-orange/10 px-4 py-3 text-sm font-bold text-mango-orange"
+                          className="flex-1 border border-[#111827] bg-white px-4 py-2 text-xs font-semibold text-[#111827] hover:bg-[#fafaf9] transition-colors"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product.id)}
-                          className="flex-1 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-500"
+                          className="flex-1 border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-red-500 hover:border-red-200 hover:bg-red-50/40 transition-colors"
                         >
                           Delete
                         </button>
@@ -1851,31 +1871,31 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {products.length === 0 && (
-              <div className="rounded-3xl border border-dashed border-gray-200 bg-white px-6 py-14 text-center">
-                <p className="text-lg font-bold text-mango-dark">No matching products</p>
-                <p className="mt-2 text-sm text-gray-500">Adjust your search or stock filters to find products faster.</p>
+              <div className="border border-dashed border-gray-200 bg-white px-6 py-14 text-center">
+                <p className="text-base font-semibold text-[#111827]">No matching products</p>
+                <p className="mt-2 text-sm text-gray-500 font-light">Adjust your search or stock filters to find products faster.</p>
               </div>
             )}
             {productTotalCount > 0 && (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-gray-500">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-[#f3f4f6] pt-5">
+                <p className="text-xs text-gray-500 font-light">
                   Showing {(productPage - 1) * PRODUCTS_PAGE_SIZE + 1}-{Math.min(productPage * PRODUCTS_PAGE_SIZE, productTotalCount)} of {productTotalCount} products
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     disabled={productPage <= 1}
                     onClick={() => setProductPage((current) => Math.max(1, current - 1))}
-                    className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-[#111827] hover:bg-[#fafaf9] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white transition-colors"
                   >
                     Previous
                   </button>
-                  <span className="text-sm font-semibold text-mango-dark">Page {productPage} / {productTotalPages}</span>
+                  <span className="text-xs font-medium text-gray-500 px-2">Page {productPage} / {productTotalPages}</span>
                   <button
                     type="button"
                     disabled={productPage >= productTotalPages}
                     onClick={() => setProductPage((current) => Math.min(productTotalPages, current + 1))}
-                    className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-[#111827] hover:bg-[#fafaf9] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white transition-colors"
                   >
                     Next
                   </button>
@@ -1887,31 +1907,33 @@ export const AdminDashboard: React.FC = () => {
 
         {activeTab === 'orders' && (
           <section className="space-y-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-[#f3f4f6] pb-6">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-mango-dark">Orders</h1>
-                <p className="mt-2 text-sm text-gray-500">Track active deliveries, confirm new orders, and resolve exceptions quickly.</p>
+                <p className="text-[10px] uppercase tracking-[0.24em] text-gray-400 font-medium">Operations</p>
+                <h1 className="mt-1 text-3xl sm:text-4xl font-bold tracking-tighter text-[#111827]">Orders</h1>
+                <p className="mt-2 text-sm text-gray-500 font-light">Track active deliveries, confirm new orders, and resolve exceptions quickly.</p>
               </div>
-              <div className="rounded-full bg-orange-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-mango-orange">
+              <div className="inline-flex w-fit items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#f97316] border border-[#fed7aa] bg-[#fff7ed]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#f97316]" />
                 {attentionOrders} pending or cancelled
               </div>
             </div>
 
             <div className="grid grid-cols-[minmax(0,1fr)_140px_130px] gap-2 sm:gap-3 sm:grid-cols-[minmax(0,1fr)_220px_180px]">
               <div className="relative min-w-0">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
                   value={orderSearchQuery}
                   onChange={(e) => setOrderSearchQuery(e.target.value)}
                   placeholder="Search by order ID, customer name, or phone"
-                  className="w-full rounded-2xl border border-gray-200 bg-white py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                  className="w-full border border-gray-200 bg-white h-10 pl-10 pr-4 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#f97316] transition"
                 />
               </div>
               <select
                 value={orderStatusFilter}
                 onChange={(e) => setOrderStatusFilter(e.target.value as 'all' | OrderStatus)}
-                className="min-w-0 rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                className="min-w-0 border border-gray-200 bg-white px-3 h-10 text-sm text-[#111827] focus:outline-none focus:border-[#f97316] transition"
               >
                 <option value="all">All statuses</option>
                 <option value="Pending">Pending</option>
@@ -1924,68 +1946,68 @@ export const AdminDashboard: React.FC = () => {
                 type="date"
                 value={orderDateFilter}
                 onChange={(e) => setOrderDateFilter(e.target.value)}
-                className="min-w-0 rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mango-orange/20"
+                className="min-w-0 border border-gray-200 bg-white px-3 h-10 text-sm text-[#111827] focus:outline-none focus:border-[#f97316] transition"
               />
             </div>
 
-            <div className="hidden md:block bg-white rounded-3xl shadow-sm border border-gray-100 overflow-x-auto">
+            <div className="hidden md:block bg-white border border-[#f3f4f6] overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="border-b border-[#f3f4f6]">
                   <tr>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Items</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Delivery</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Total</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Order Status</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment Status</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Update Status</th>
-                    <th className="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Update Payment</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Order ID</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Customer</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Items</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Delivery</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Total</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Payment</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Order Status</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Payment Status</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest text-right">Update Status</th>
+                    <th className="px-6 py-3.5 text-[10px] font-semibold text-gray-500 uppercase tracking-widest text-right">Update Payment</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[#f3f4f6]">
                   {orders.map((order) => (
-                    <tr key={order.id} className={`transition-colors hover:bg-gray-50/50 ${order.status === 'Pending' || order.status === 'Cancelled' ? 'bg-orange-50/40' : ''}`}>
-                      <td className="px-8 py-4">
+                    <tr key={order.id} className={`transition-colors hover:bg-[#fafaf9] ${order.status === 'Pending' || order.status === 'Cancelled' ? 'bg-[#fff7ed]/40' : ''}`}>
+                      <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-gray-400">#{order.id.slice(-6).toUpperCase()}</span>
-                          <span className="mt-1 text-xs text-gray-400">{formatOrderTimestamp(new Date(order.createdAt))}</span>
+                          <span className="text-xs font-semibold text-[#111827]">#{order.id.slice(-6).toUpperCase()}</span>
+                          <span className="mt-1 text-[11px] text-gray-400 font-light">{formatOrderTimestamp(new Date(order.createdAt))}</span>
                         </div>
                       </td>
-                      <td className="px-8 py-4">
+                      <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="font-bold text-mango-dark">Name: {order.customerName}</span>
-                          <span className="text-xs text-gray-400">Phone: {order.customerPhone}</span>
-                          <span className="mt-1 text-xs text-gray-400">Address: {order.deliveryAddress}</span>
+                          <span className="text-sm font-semibold text-[#111827]">{order.customerName}</span>
+                          <span className="mt-0.5 text-xs text-gray-500 font-light">{order.customerPhone}</span>
+                          <span className="mt-0.5 text-xs text-gray-500 font-light">{order.deliveryAddress}</span>
                         </div>
                       </td>
-                      <td className="px-8 py-4">
+                      <td className="px-6 py-4">
                         <div className="space-y-1">
                           {order.items.slice(0, 2).map((item, i) => (
-                            <p key={i} className="text-sm text-gray-600">
-                              <span className="font-semibold text-mango-dark">{item.quantity}x</span> {item.productName} ({item.variant})
+                            <p key={i} className="text-xs text-gray-600 font-light">
+                              <span className="font-semibold text-[#111827]">{item.quantity}×</span> {item.productName} ({item.variant})
                             </p>
                           ))}
-                          {order.items.length > 2 && <p className="text-xs font-semibold text-gray-400">+{order.items.length - 2} more items</p>}
+                          {order.items.length > 2 && <p className="text-[11px] font-medium text-gray-400">+{order.items.length - 2} more items</p>}
                         </div>
                       </td>
-                      <td className="px-8 py-4">
-                        <div className="flex flex-col text-sm text-gray-500">
-                          <span className="font-semibold text-mango-dark">{order.deliveryArea}</span>
-                          <span>{order.deliveryDate}</span>
-                          <span>{order.paymentMethod}</span>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col text-xs text-gray-500 font-light">
+                          <span className="text-sm font-semibold text-[#111827]">{order.deliveryArea}</span>
+                          <span className="mt-0.5">{order.deliveryDate}</span>
+                          <span className="mt-0.5">{order.paymentMethod}</span>
                         </div>
                       </td>
-                      <td className="px-8 py-4 font-bold">{formatCurrency(order.total)}</td>
-                      <td className="px-8 py-4">
-                        <div className="space-y-2 text-sm">
-                          <div className="font-semibold text-mango-dark">{order.paymentMethod}</div>
-                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
+                      <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{formatCurrency(order.total)}</td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2 text-xs">
+                          <div className="font-semibold text-[#111827]">{order.paymentMethod}</div>
+                          <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
                             {order.paymentStatus}
                           </span>
                           {order.paymentMethod !== 'Cash on Delivery' && (
-                            <div className="space-y-1 text-xs text-gray-500">
+                            <div className="space-y-0.5 text-[11px] text-gray-500 font-light">
                               <p>Sent from: {order.paymentSenderPhone || 'Not submitted'}</p>
                               <p>Txn ID: {order.paymentTransactionId || 'Not submitted'}</p>
                               <p>Confirmation: {formatCurrency(order.paymentConfirmationAmount ?? 0)}</p>
@@ -1993,21 +2015,21 @@ export const AdminDashboard: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-8 py-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getOrderStatusClasses(order.status)}`}>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getOrderStatusClasses(order.status)}`}>
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-8 py-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
                           {order.paymentStatus}
                         </span>
                       </td>
-                      <td className="px-8 py-4 text-right">
-                        <select 
+                      <td className="px-6 py-4 text-right">
+                        <select
                           value={order.status}
                           onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
-                          className="text-xs font-bold bg-gray-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-mango-orange/20 cursor-pointer"
+                          className="text-xs font-semibold text-[#111827] bg-white border border-gray-200 px-2 py-1.5 focus:outline-none focus:border-[#f97316] cursor-pointer"
                         >
                           <option value="Pending">Pending</option>
                           <option value="Confirmed">Confirmed</option>
@@ -2016,11 +2038,11 @@ export const AdminDashboard: React.FC = () => {
                           <option value="Cancelled">Cancelled</option>
                         </select>
                       </td>
-                      <td className="px-8 py-4 text-right">
+                      <td className="px-6 py-4 text-right">
                         <select
                           value={order.paymentStatus}
                           onChange={(e) => handleUpdatePaymentStatus(order.id, e.target.value as PaymentStatus)}
-                          className="text-xs font-bold bg-gray-50 border-none rounded-xl px-3 py-2 focus:ring-2 focus:ring-mango-orange/20 cursor-pointer"
+                          className="text-xs font-semibold text-[#111827] bg-white border border-gray-200 px-2 py-1.5 focus:outline-none focus:border-[#f97316] cursor-pointer"
                         >
                           <option value="Not Required">Not Required</option>
                           <option value="Awaiting Verification">Awaiting Verification</option>
@@ -2036,68 +2058,68 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-3 md:hidden">
               {orders.map((order) => (
-                <div key={order.id} className={`rounded-3xl border border-gray-100 bg-white p-3 shadow-sm ${order.status === 'Pending' || order.status === 'Cancelled' ? 'ring-1 ring-orange-200' : ''}`}>
+                <div key={order.id} className={`border bg-white p-4 ${order.status === 'Pending' || order.status === 'Cancelled' ? 'border-[#fed7aa]' : 'border-[#f3f4f6]'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Order ID</p>
-                      <p className="font-bold text-mango-dark">#{order.id.slice(-6).toUpperCase()}</p>
-                      <p className="mt-1 text-xs text-gray-400">{formatOrderTimestamp(new Date(order.createdAt))}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Order ID</p>
+                      <p className="mt-0.5 text-sm font-bold tracking-tight text-[#111827]">#{order.id.slice(-6).toUpperCase()}</p>
+                      <p className="mt-1 text-[11px] text-gray-400 font-light">{formatOrderTimestamp(new Date(order.createdAt))}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getOrderStatusClasses(order.status)}`}>
+                    <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getOrderStatusClasses(order.status)}`}>
                       {order.status}
                     </span>
                   </div>
 
-                  <div className="mt-3 rounded-2xl bg-gray-50 px-3 py-2.5">
-                    <p className="font-bold text-mango-dark">Name: {order.customerName}</p>
-                    <p className="text-[13px] text-gray-500">Phone: {order.customerPhone}</p>
-                    <p className="mt-0.5 text-[13px] text-gray-500">Address: {order.deliveryAddress}</p>
+                  <div className="mt-4 pt-4 border-t border-[#f3f4f6]">
+                    <p className="text-sm font-semibold text-[#111827]">{order.customerName}</p>
+                    <p className="text-xs text-gray-500 font-light mt-0.5">{order.customerPhone}</p>
+                    <p className="mt-0.5 text-xs text-gray-500 font-light">{order.deliveryAddress}</p>
                   </div>
 
-                  <div className="mt-3">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Items</p>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="mt-4">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Items</p>
+                    <div className="flex flex-wrap gap-1.5">
                       {order.items.map((item, i) => (
-                        <div key={i} className="rounded-full bg-gray-100 px-3 py-1 text-[12px] text-gray-600">
-                          {item.quantity}x {item.productName} ({item.variant})
+                        <div key={i} className="bg-[#fafaf9] border border-[#f3f4f6] px-2.5 py-1 text-[11px] text-gray-700 font-light">
+                          {item.quantity}× {item.productName} ({item.variant})
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                    <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Delivery</p>
-                      <p className="mt-1 font-semibold text-mango-dark">{order.deliveryArea}</p>
-                      <p className="text-xs text-gray-500">{order.deliveryDate}</p>
+                  <div className="mt-4 grid grid-cols-2 gap-px bg-[#f3f4f6] border border-[#f3f4f6] text-xs">
+                    <div className="bg-white px-3 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Delivery</p>
+                      <p className="mt-1 text-sm font-semibold text-[#111827]">{order.deliveryArea}</p>
+                      <p className="text-[11px] text-gray-500 font-light">{order.deliveryDate}</p>
                     </div>
-                    <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Payment</p>
-                      <p className="mt-1 font-semibold text-mango-dark">{order.paymentMethod}</p>
-                      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
+                    <div className="bg-white px-3 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Payment</p>
+                      <p className="mt-1 text-sm font-semibold text-[#111827]">{order.paymentMethod}</p>
+                      <p className={`mt-1.5 inline-flex px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getPaymentStatusClasses(order.paymentStatus)}`}>
                         {order.paymentStatus}
                       </p>
                     </div>
                   </div>
 
                   {order.paymentMethod !== 'Cash on Delivery' && (
-                    <div className="mt-3 rounded-2xl bg-orange-50/50 px-3 py-2.5 text-[13px] text-gray-600">
-                      <p><span className="font-bold text-mango-dark">Sender:</span> {order.paymentSenderPhone || 'Not submitted'}</p>
-                      <p className="mt-1"><span className="font-bold text-mango-dark">Txn ID:</span> {order.paymentTransactionId || 'Not submitted'}</p>
-                      <p className="mt-1"><span className="font-bold text-mango-dark">Confirmation:</span> {formatCurrency(order.paymentConfirmationAmount ?? 0)}</p>
+                    <div className="mt-3 border border-[#fed7aa] bg-[#fff7ed]/40 px-3 py-2.5 text-[12px] text-gray-700 font-light">
+                      <p><span className="font-semibold text-[#111827]">Sender:</span> {order.paymentSenderPhone || 'Not submitted'}</p>
+                      <p className="mt-1"><span className="font-semibold text-[#111827]">Txn ID:</span> {order.paymentTransactionId || 'Not submitted'}</p>
+                      <p className="mt-1"><span className="font-semibold text-[#111827]">Confirmation:</span> {formatCurrency(order.paymentConfirmationAmount ?? 0)}</p>
                     </div>
                   )}
 
-                  <div className="mt-3 flex items-center justify-between gap-3">
+                  <div className="mt-4 pt-4 border-t border-[#f3f4f6] flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Total</p>
-                      <p className="text-lg font-black text-mango-dark">{formatCurrency(order.total)}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Total</p>
+                      <p className="mt-0.5 text-xl font-bold tracking-tight text-[#111827]">{formatCurrency(order.total)}</p>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1.5">
                       <select
                         value={order.status}
                         onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
-                        className="max-w-[160px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
+                        className="max-w-[180px] border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-[#111827] focus:outline-none focus:border-[#f97316]"
                       >
                         <option value="Pending">Pending</option>
                         <option value="Confirmed">Confirmed</option>
@@ -2108,7 +2130,7 @@ export const AdminDashboard: React.FC = () => {
                       <select
                         value={order.paymentStatus}
                         onChange={(e) => handleUpdatePaymentStatus(order.id, e.target.value as PaymentStatus)}
-                        className="max-w-[160px] rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-mango-orange/20"
+                        className="max-w-[180px] border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-[#111827] focus:outline-none focus:border-[#f97316]"
                       >
                         <option value="Not Required">Not Required</option>
                         <option value="Awaiting Verification">Awaiting Verification</option>
@@ -2122,31 +2144,31 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {orders.length === 0 && (
-              <div className="rounded-3xl border border-dashed border-gray-200 bg-white px-6 py-14 text-center">
-                <p className="text-lg font-bold text-mango-dark">No orders found</p>
-                <p className="mt-2 text-sm text-gray-500">Try a different search, status, or date filter.</p>
+              <div className="border border-dashed border-gray-200 bg-white px-6 py-14 text-center">
+                <p className="text-base font-semibold text-[#111827]">No orders found</p>
+                <p className="mt-2 text-sm text-gray-500 font-light">Try a different search, status, or date filter.</p>
               </div>
             )}
             {orderTotalCount > 0 && (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-gray-500">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-[#f3f4f6] pt-5">
+                <p className="text-xs text-gray-500 font-light">
                   Showing {(orderPage - 1) * ORDERS_PAGE_SIZE + 1}-{Math.min(orderPage * ORDERS_PAGE_SIZE, orderTotalCount)} of {orderTotalCount} orders
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     disabled={orderPage <= 1}
                     onClick={() => setOrderPage((current) => Math.max(1, current - 1))}
-                    className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-[#111827] hover:bg-[#fafaf9] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white transition-colors"
                   >
                     Previous
                   </button>
-                  <span className="text-sm font-semibold text-mango-dark">Page {orderPage} / {orderTotalPages}</span>
+                  <span className="text-xs font-medium text-gray-500 px-2">Page {orderPage} / {orderTotalPages}</span>
                   <button
                     type="button"
                     disabled={orderPage >= orderTotalPages}
                     onClick={() => setOrderPage((current) => Math.min(orderTotalPages, current + 1))}
-                    className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-[#111827] hover:bg-[#fafaf9] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white transition-colors"
                   >
                     Next
                   </button>
@@ -2158,7 +2180,7 @@ export const AdminDashboard: React.FC = () => {
 
         {activeTab === 'settings' && (
           <div className="space-y-6">
-            <Suspense fallback={<div className="rounded-3xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500">Loading settings...</div>}>
+            <Suspense fallback={<div className="border border-[#f3f4f6] bg-white px-6 py-10 text-center text-sm text-gray-500 font-light">Loading settings...</div>}>
               <AdminSettingsPanel
                 promoStories={settingsForm.promoStories}
                 savedMessage={settingsSavedMessage}
@@ -2192,10 +2214,10 @@ export const AdminDashboard: React.FC = () => {
       {isProductModalOpen && (
         <Suspense fallback={
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-mango-dark/60 backdrop-blur-sm" />
-            <div className="relative w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
-              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-mango-orange" />
-              <p className="mt-4 text-sm font-bold text-mango-dark">Loading product form...</p>
+            <div className="absolute inset-0 bg-[#111827]/40 backdrop-blur-sm" />
+            <div className="relative w-full max-w-md border border-[#f3f4f6] bg-white p-8 text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#f3f4f6] border-t-[#f97316]" />
+              <p className="mt-4 text-sm font-semibold text-[#111827]">Loading product form...</p>
             </div>
           </div>
         }>
@@ -2225,28 +2247,28 @@ export const AdminDashboard: React.FC = () => {
       {showNotifPanel && (
         <div className="lg:hidden fixed inset-0 z-50" onClick={() => setShowNotifPanel(false)}>
           <div
-            className="absolute top-[130px] left-4 right-4 bg-[#1a1510] border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[60vh] flex flex-col"
+            className="absolute top-[120px] left-4 right-4 bg-white border border-[#f3f4f6] shadow-lg overflow-hidden max-h-[60vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-              <span className="text-xs font-black uppercase tracking-wider text-white/70">Notifications</span>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#f3f4f6]">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Notifications</span>
               <div className="flex items-center gap-3">
                 {orderNotifications.some((n) => !n.seen) && (
                   <button
                     onClick={() => setOrderNotifications((prev) => prev.map((n) => ({ ...n, seen: true })))}
-                    className="flex items-center gap-1 text-[10px] font-bold text-mango-orange"
+                    className="flex items-center gap-1 text-[10px] font-medium text-[#f97316] hover:text-[#ea580c] transition-colors"
                   >
                     <CheckCheck size={12} /> Mark all read
                   </button>
                 )}
-                <button onClick={() => setShowNotifPanel(false)} className="text-white/40 hover:text-white">
+                <button onClick={() => setShowNotifPanel(false)} className="text-gray-400 hover:text-[#111827] transition-colors">
                   <X size={16} />
                 </button>
               </div>
             </div>
             <div className="overflow-y-auto flex-1">
               {orderNotifications.length === 0 ? (
-                <div className="py-10 text-center text-xs text-white/30">No new orders yet</div>
+                <div className="py-10 text-center text-xs text-gray-400 font-light">No new orders yet</div>
               ) : (
                 orderNotifications.map((n) => (
                   <button
@@ -2256,15 +2278,14 @@ export const AdminDashboard: React.FC = () => {
                       setActiveTab('orders');
                       setShowNotifPanel(false);
                     }}
-                    className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${!n.seen ? 'bg-mango-orange/5' : ''}`}
+                    className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-[#f3f4f6] hover:bg-[#fafaf9] transition-colors ${!n.seen ? 'bg-[#fff7ed]/40' : ''}`}
                   >
-                    {!n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-mango-orange" />}
-                    {n.seen && <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-transparent" />}
+                    {!n.seen ? <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-[#f97316]" /> : <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-transparent" />}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{n.customerName}</p>
-                      <p className="text-xs text-white/50">৳{n.amount.toLocaleString()} · {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-sm font-semibold text-[#111827] truncate">{n.customerName}</p>
+                      <p className="text-xs text-gray-500 font-light">৳{n.amount.toLocaleString()} · {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
-                    <ArrowRight size={13} className="text-white/30 shrink-0 mt-1" />
+                    <ArrowRight size={12} className="text-gray-300 shrink-0 mt-1" />
                   </button>
                 ))
               )}
@@ -2276,24 +2297,24 @@ export const AdminDashboard: React.FC = () => {
       {/* New Order Toast */}
       {toastNotif && (
         <div className="fixed bottom-6 right-6 z-[200] animate-slide-up">
-          <div className="flex items-start gap-4 bg-[#1a1200] text-white rounded-2xl shadow-2xl border border-mango-orange/30 p-4 max-w-sm">
-            <div className="shrink-0 w-10 h-10 rounded-xl bg-mango-orange flex items-center justify-center">
-              <ShoppingBag size={18} />
+          <div className="flex items-start gap-3 bg-white border border-[#f3f4f6] shadow-lg p-4 max-w-sm">
+            <div className="shrink-0 w-9 h-9 bg-[#fff7ed] border border-[#fed7aa] flex items-center justify-center text-[#f97316]">
+              <ShoppingBag size={16} strokeWidth={1.75} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-black uppercase tracking-wider text-mango-orange mb-0.5">New Order!</p>
-              <p className="text-sm font-bold truncate">{toastNotif.customerName}</p>
-              <p className="text-xs text-white/60">৳{toastNotif.amount.toLocaleString()} · Just now</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#f97316] mb-0.5">New Order</p>
+              <p className="text-sm font-semibold truncate text-[#111827]">{toastNotif.customerName}</p>
+              <p className="text-xs text-gray-500 font-light">৳{toastNotif.amount.toLocaleString()} · Just now</p>
               <button
                 onClick={() => { setActiveTab('orders'); setToastNotif(null); }}
-                className="mt-2 flex items-center gap-1.5 text-xs font-bold text-mango-orange hover:text-orange-400 transition-colors"
+                className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#111827] hover:text-[#f97316] transition-colors"
               >
                 View Order <ArrowRight size={12} />
               </button>
             </div>
             <button
               onClick={() => setToastNotif(null)}
-              className="shrink-0 text-white/30 hover:text-white/70 transition-colors"
+              className="shrink-0 text-gray-300 hover:text-[#111827] transition-colors"
             >
               <X size={16} />
             </button>

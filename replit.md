@@ -81,3 +81,18 @@ VITE_SUPABASE_ANON_KEY=
 npm run dev    # Start at port 5000
 npm run build  # Production build
 ```
+
+## Admin Panel Design Tokens
+
+The admin panel was redesigned (April 2026) to match the Variant C — Clean Minimal aesthetic of the storefront.
+
+- Backgrounds: white primary, `#fafaf9` for hover/empty states
+- Borders: `#f3f4f6` (soft) and `#e5e7eb` (input)
+- Text: `#111827` primary, `gray-500` secondary, `font-light` for body copy
+- Accent: `#f97316` orange for active dots, badges, focus borders
+- Buttons: dark `#111827` for primary, white outlined for secondary; no rounded corners
+- Status badges: bordered emerald / blue / amber / red / orange palette
+- Headlines: `tracking-tighter font-bold`, eyebrow text uses `tracking-[0.24em]` uppercase
+- Sticky mobile header with `backdrop-blur-md`; desktop sidebar `w-60` with active orange dot
+
+Affected files: `src/pages/AdminDashboard.tsx`, `src/features/admin/components/AdminSettingsPanel.tsx`, `AdminProductModal.tsx`, `AdminChangePasswordPanel.tsx`.
