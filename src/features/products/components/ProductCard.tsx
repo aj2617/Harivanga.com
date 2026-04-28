@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ShoppingCart, Image as ImageIcon, Star } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Image as ImageIcon, Star, Zap } from 'lucide-react';
 import { Product } from '../../../types';
 import { useCart } from '../../../context/CartContext';
 import { formatCurrency } from '../../../lib/format';
@@ -13,6 +13,7 @@ interface ProductCardProps {
 
 const ProductCardComponent: React.FC<ProductCardProps> = ({ product, priority = false }) => {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [imageFailed, setImageFailed] = useState(false);
   const [added, setAdded] = useState(false);
 
@@ -29,6 +30,20 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({ product, priority = 
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1400);
+  };
+
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart({
+      productId: product.id,
+      productName: product.name,
+      quantity: 1,
+      variant: product.variants[0]?.weight || '1kg',
+      price: product.variants[0]?.price || product.pricePerKg,
+      image: product.image,
+    });
+    navigate('/checkout');
   };
 
   return (
@@ -87,26 +102,37 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({ product, priority = 
           <span className="text-[11px] text-gray-400 ml-1">Premium</span>
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] text-gray-400 mb-0.5">Starting from</p>
-            <p className="text-xl font-black text-mango-dark">
-              {formatCurrency(product.pricePerKg)}
-              <span className="text-xs font-normal text-gray-400 ml-0.5">/kg</span>
-            </p>
+        <div className="mt-auto space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] text-gray-400 mb-0.5">Starting from</p>
+              <p className="text-xl font-black text-mango-dark">
+                {formatCurrency(product.pricePerKg)}
+                <span className="text-xs font-normal text-gray-400 ml-0.5">/kg</span>
+              </p>
+            </div>
+
+            <button
+              onClick={handleAddToCart}
+              disabled={!product.isAvailable}
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+                added
+                  ? 'bg-green-500 text-white shadow-green-500/25'
+                  : 'bg-mango-orange text-white hover:bg-orange-600 shadow-mango-orange/25 hover:shadow-mango-orange/40 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed'
+              }`}
+            >
+              <ShoppingCart size={14} />
+              {added ? 'Added!' : 'Add'}
+            </button>
           </div>
 
           <button
-            onClick={handleAddToCart}
+            onClick={handleBuyNow}
             disabled={!product.isAvailable}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${
-              added
-                ? 'bg-green-500 text-white shadow-green-500/25'
-                : 'bg-mango-orange text-white hover:bg-orange-600 shadow-mango-orange/25 hover:shadow-mango-orange/40 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed'
-            }`}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold bg-[#1a1200] text-white hover:bg-mango-dark transition-all shadow-md shadow-black/15 hover:shadow-black/25 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed"
           >
-            <ShoppingCart size={14} />
-            {added ? 'Added!' : 'Add'}
+            <Zap size={14} className="fill-mango-yellow text-mango-yellow" />
+            Buy Now
           </button>
         </div>
       </div>
