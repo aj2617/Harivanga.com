@@ -301,7 +301,17 @@ export const AdminDashboard: React.FC = () => {
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string | null>(null);
   const [reviews, setReviews] = useState<CustomerReviewInput[]>([]);
   const [reviewsSavedMessage, setReviewsSavedMessage] = useState<string | null>(null);
-  const [orderNotifications, setOrderNotifications] = useState<OrderNotification[]>([]);
+  const [orderNotifications, setOrderNotifications] = useState<OrderNotification[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.sessionStorage.getItem('harivanga_admin_notifs');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as OrderNotification[];
+      return Array.isArray(parsed) ? parsed.slice(0, 30) : [];
+    } catch {
+      return [];
+    }
+  });
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [toastNotif, setToastNotif] = useState<OrderNotification | null>(null);
   const [adminEmail, setAdminEmail] = useState(localHost ? LOCAL_DEV_ADMIN_EMAIL : '');
@@ -369,11 +379,120 @@ export const AdminDashboard: React.FC = () => {
   }, [toastNotif]);
 
   useEffect(() => {
-    if (!hasAdminAccess || !hasSupabaseConfig) return;
+    if (!hasAdminAccess) return;
     if ('Notification' in window && Notification.permission === 'default') {
-      void Notification.requestPermission();
+      void Notification.requestPermission().catch(() => { /* user dismissed */ });
     }
   }, [hasAdminAccess]);
+
+  // Persist notifications across refreshes so unread alerts survive
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem('harivanga_admin_notifs', JSON.stringify(orderNotifications.slice(0, 30)));
+    } catch { /* quota exceeded — ignore */ }
+  }, [orderNotifications]);
+
+  // Dedicated realtime subscription for new-order notifications.
+  // Kept separate from the data-refresh channels above so filter/page changes
+  // don't tear down the notification stream and miss inserts.
+  useEffect(() => {
+    if (!hasAdminAccess || !hasSupabaseConfig) return;
+
+    const pushNotification = (
+      orderId: string,
+      customerName: string,
+      amount: number,
+      createdAt: string,
+    ) => {
+      const notifId = `notif-${orderId}`;
+      setOrderNotifications((prev) => {
+        if (prev.some((n) => n.id === notifId)) return prev;
+        const notif: OrderNotification = {
+          id: notifId,
+          orderId,
+          customerName,
+          amount,
+          createdAt,
+          seen: false,
+        };
+        setToastNotif(notif);
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            void new Notification('New Order Received!', {
+              body: `${customerName} placed an order for ৳${amount.toLocaleString()}`,
+              icon: '/logo.png',
+              tag: orderId,
+            });
+          } catch { /* notification API quirks — ignore */ }
+        }
+        return [notif, ...prev].slice(0, 30);
+      });
+    };
+
+    const channel = supabase
+      .channel('new-order-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        (payload) => {
+          const row = payload.new as {
+            id: string;
+            customer_name: string;
+            total: number;
+            created_at: string;
+          };
+          if (!row?.id) return;
+          pushNotification(row.id, row.customer_name ?? 'Customer', Number(row.total) || 0, row.created_at ?? new Date().toISOString());
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('new-order-notifications channel status:', status);
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [hasAdminAccess]);
+
+  // Local dev: surface an in-app notification when a new local order is saved.
+  useEffect(() => {
+    if (!hasAdminAccess || !isLocalDevBypass) return;
+    if (typeof window === 'undefined') return;
+
+    const handleLocalOrders = () => {
+      const latest = getLocalDevOrders()[0];
+      if (!latest) return;
+      const notifId = `notif-${latest.id}`;
+      setOrderNotifications((prev) => {
+        if (prev.some((n) => n.id === notifId)) return prev;
+        const notif: OrderNotification = {
+          id: notifId,
+          orderId: latest.id,
+          customerName: latest.customerName,
+          amount: latest.total,
+          createdAt: latest.createdAt,
+          seen: false,
+        };
+        setToastNotif(notif);
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            void new Notification('New Order Received!', {
+              body: `${latest.customerName} placed an order for ৳${latest.total.toLocaleString()}`,
+              icon: '/logo.png',
+              tag: latest.id,
+            });
+          } catch { /* ignore */ }
+        }
+        return [notif, ...prev].slice(0, 30);
+      });
+    };
+
+    window.addEventListener(LOCAL_DEV_ORDERS_UPDATED_EVENT, handleLocalOrders);
+    return () => window.removeEventListener(LOCAL_DEV_ORDERS_UPDATED_EVENT, handleLocalOrders);
+  }, [hasAdminAccess, isLocalDevBypass]);
 
   useEffect(() => {
     if (!isAdmin || !hasSupabaseConfig) return;
@@ -659,39 +778,6 @@ export const AdminDashboard: React.FC = () => {
       })
       .subscribe();
 
-    const newOrderNotifChannel = supabase
-      .channel('new-order-notifications')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'orders' },
-        (payload) => {
-          const row = payload.new as {
-            id: string;
-            customer_name: string;
-            total: number;
-            created_at: string;
-          };
-          const notif: OrderNotification = {
-            id: `notif-${row.id}`,
-            orderId: row.id,
-            customerName: row.customer_name,
-            amount: row.total,
-            createdAt: row.created_at,
-            seen: false,
-          };
-          setOrderNotifications((prev) => [notif, ...prev].slice(0, 30));
-          setToastNotif(notif);
-          if ('Notification' in window && Notification.permission === 'granted') {
-            void new Notification('New Order Received!', {
-              body: `${row.customer_name} placed an order for ৳${row.total.toLocaleString()}`,
-              icon: '/logo.png',
-              tag: row.id,
-            });
-          }
-        }
-      )
-      .subscribe();
-
     const refreshLocalOrders = () => {
       if (!isLocalDevBypass) return;
       const nextOrders = getLocalDevOrders();
@@ -704,7 +790,6 @@ export const AdminDashboard: React.FC = () => {
     return () => {
       void supabase.removeChannel(productsChannel);
       void supabase.removeChannel(ordersChannel);
-      void supabase.removeChannel(newOrderNotifChannel);
       window.removeEventListener(LOCAL_DEV_ORDERS_UPDATED_EVENT, refreshLocalOrders);
     };
   }, [
