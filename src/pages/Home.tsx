@@ -332,7 +332,7 @@ export const Home: React.FC = () => {
     <div className="flex flex-col">
 
       {/* ── HERO ── */}
-      <section className="relative min-h-[560px] sm:min-h-[88vh] flex items-center overflow-hidden bg-[#0f0c07]">
+      <section className="relative min-h-[88vh] flex items-center overflow-hidden bg-[#0f0c07]">
         <div className="absolute inset-0">
           {HOME_BANNER_SLIDES.map((src, i) => (
             <img
@@ -349,14 +349,14 @@ export const Home: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-20 w-full">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 mb-3 sm:mb-5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-mango-yellow">
+            <span className="inline-flex items-center gap-2 mb-5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-mango-yellow">
               <Sprout size={12} />
               Season 2026 — Now Open
             </span>
 
-            <h1 className="text-[2.6rem] leading-[1] sm:text-6xl lg:text-7xl font-black sm:leading-[0.92] tracking-tight text-white">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.92] tracking-tight text-white">
               Farm Fresh{' '}
               <span
                 className="italic"
@@ -368,38 +368,38 @@ export const Home: React.FC = () => {
               for Every Doorstep
             </h1>
 
-            <p className="mt-3 sm:mt-6 text-sm sm:text-lg text-white/70 max-w-xl leading-relaxed">
+            <p className="mt-6 text-base sm:text-lg text-white/70 max-w-xl leading-relaxed">
               Hand-picked Harivanga mangoes from Podaganj&apos;s legendary red-soil farms — tree-ripened, chemical-free, and delivered in 48 hours.
             </p>
 
-            <div className="mt-5 sm:mt-10 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+            <div className="mt-10 flex flex-col sm:flex-row gap-3">
               <Link
                 to="/products"
-                className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-mango-orange px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-bold text-white shadow-2xl shadow-mango-orange/40 hover:bg-orange-600 transition-all hover:shadow-orange-600/40 hover:gap-4"
+                className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-mango-orange px-8 py-4 text-base font-bold text-white shadow-2xl shadow-mango-orange/40 hover:bg-orange-600 transition-all hover:shadow-orange-600/40 hover:gap-4"
               >
                 Shop Mangoes
                 <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
                 to="/about"
-                className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-bold text-white hover:bg-white/20 transition-all"
+                className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-8 py-4 text-base font-bold text-white hover:bg-white/20 transition-all"
               >
                 Our Story
               </Link>
             </div>
 
-            <div className="mt-5 sm:mt-10 flex items-center gap-3 sm:gap-4">
+            <div className="mt-10 flex items-center gap-4">
               <div className="flex -space-x-2">
                 {['🧑', '👨', '👩', '🧑'].map((e, i) => (
                   <span
                     key={i}
-                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 border-2 border-white/30 flex items-center justify-center text-xs sm:text-sm"
+                    className="w-8 h-8 rounded-full bg-amber-100 border-2 border-white/30 flex items-center justify-center text-sm"
                   >
                     {e}
                   </span>
                 ))}
               </div>
-              <div className="text-xs sm:text-sm text-white/70">
+              <div className="text-sm text-white/70">
                 <span className="font-bold text-white">10,000+</span> happy customers this season
               </div>
             </div>
