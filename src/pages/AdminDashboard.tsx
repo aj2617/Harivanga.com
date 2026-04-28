@@ -1404,6 +1404,7 @@ export const AdminDashboard: React.FC = () => {
                 <input
                   type="email"
                   required
+                  autoComplete="username"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   className="h-11 w-full border border-gray-200 bg-white px-4 text-sm text-[#111827] outline-none transition focus:border-[#f97316]"
@@ -1428,6 +1429,7 @@ export const AdminDashboard: React.FC = () => {
                   <input
                     type={showAdminPassword ? 'text' : 'password'}
                     required
+                    autoComplete="current-password"
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     className="h-11 w-full border border-gray-200 bg-white px-4 pr-11 text-sm text-[#111827] outline-none transition focus:border-[#f97316]"
