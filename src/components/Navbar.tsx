@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, LogOut } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, Phone, ChevronRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { BrandLogo } from './BrandLogo';
@@ -111,6 +111,13 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <div
+        className="mobile-menu-backdrop md:hidden"
+        data-open={isMenuOpen}
+        aria-hidden={!isMenuOpen}
+        onClick={() => setIsMenuOpen(false)}
+      />
 
       <div
         className="mobile-menu-panel md:hidden bg-white border-t border-gray-100"
