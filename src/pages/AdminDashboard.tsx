@@ -278,6 +278,37 @@ const buildProductForm = (product: Product): Partial<Product> => {
   };
 };
 
+// Plays a soft two-note chime so the admin hears new orders even when the tab isn't focused.
+// Uses Web Audio so we don't need to bundle an audio file.
+const playOrderChime = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    const playTone = (freq: number, startAt: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + startAt);
+      osc.stop(ctx.currentTime + startAt + duration + 0.02);
+    };
+
+    // Pleasant ding-dong: E5 then C5
+    playTone(659.25, 0, 0.22);
+    playTone(523.25, 0.18, 0.34);
+
+    window.setTimeout(() => { void ctx.close().catch(() => { /* ignore */ }); }, 900);
+  } catch { /* AudioContext unavailable or blocked — ignore */ }
+};
+
 export const AdminDashboard: React.FC = () => {
   const { isAdmin, loading: authLoading, user } = useAuth();
   const navigate = useNavigate();
@@ -417,6 +448,7 @@ export const AdminDashboard: React.FC = () => {
           seen: false,
         };
         setToastNotif(notif);
+        playOrderChime();
         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
           try {
             void new Notification('New Order Received!', {
@@ -477,6 +509,7 @@ export const AdminDashboard: React.FC = () => {
           seen: false,
         };
         setToastNotif(notif);
+        playOrderChime();
         if ('Notification' in window && Notification.permission === 'granted') {
           try {
             void new Notification('New Order Received!', {
