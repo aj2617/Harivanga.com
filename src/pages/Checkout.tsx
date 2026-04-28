@@ -202,13 +202,6 @@ export const Checkout: React.FC = () => {
       }
 
       const savedOrder = { id: createdOrderId, userId: user?.id, ...orderBase };
-      if (hasSupabaseConfig && createdOrderId) {
-        void (async () => {
-          const { data, error } = await supabase.functions.invoke('order-notifications', { body: { orderId: createdOrderId } });
-          if (error) { console.warn('Order notification failed', error); return; }
-          console.info('Order notification result', data);
-        })();
-      }
 
       clearCart();
       saveRecentOrder(savedOrder);
