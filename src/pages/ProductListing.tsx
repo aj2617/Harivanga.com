@@ -106,9 +106,7 @@ export const ProductListing: React.FC = () => {
             <p className="text-sm text-gray-400 mb-6">
               {products.length} product{products.length !== 1 ? 's' : ''} found
             </p>
-            <div
-              className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 lg:gap-8 [content-visibility:auto] [contain-intrinsic-size:1px_1400px]"
-            >
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 lg:gap-8">
               {products.map((product, index) => (
                 <div
                   key={product.id}
