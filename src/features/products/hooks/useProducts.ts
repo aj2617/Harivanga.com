@@ -21,6 +21,14 @@ type UseProductsOptions = {
   limit?: number;
 };
 
+function isDemoProduct(product: Product) {
+  return typeof product.id === 'string' && product.id.startsWith('demo-');
+}
+
+function sanitizeStorefrontProducts(products: Product[]) {
+  return products.filter((product) => !isDemoProduct(product));
+}
+
 function readStorageCache(key: string) {
   if (typeof window === 'undefined') {
     return null;
@@ -48,17 +56,18 @@ function readCachedProducts() {
   }
 
   const isFresh = Date.now() - parsed.timestamp < CACHE_TTL_MS;
-  return isFresh ? parsed.products : null;
+  return isFresh ? sanitizeStorefrontProducts(parsed.products) : null;
 }
 
 function writeCachedProducts(products: Product[]) {
-  memoryCache.set(PERSISTENT_CACHE_KEY, { products, timestamp: Date.now() });
+  const sanitizedProducts = sanitizeStorefrontProducts(products);
+  memoryCache.set(PERSISTENT_CACHE_KEY, { products: sanitizedProducts, timestamp: Date.now() });
 
   if (typeof window === 'undefined') {
     return;
   }
 
-  const nextCache = { products, timestamp: Date.now() };
+  const nextCache = { products: sanitizedProducts, timestamp: Date.now() };
 
   try {
     window.sessionStorage.setItem(STOREFRONT_PRODUCTS_CACHE_KEY, JSON.stringify(nextCache));
@@ -88,7 +97,8 @@ export function useProducts(options?: UseProductsOptions) {
       return readCachedProducts() ?? [];
     }
 
-    return memoryCache.get(cacheKey)?.products ?? [];
+    const cachedProducts = memoryCache.get(cacheKey)?.products ?? [];
+    return sanitizeStorefrontProducts(cachedProducts);
   });
   const [loading, setLoading] = useState(localDevMode || hasSupabaseConfig);
   const [error, setError] = useState<string | null>(hasSupabaseConfig ? null : 'Store configuration is incomplete.');
@@ -97,6 +107,17 @@ export function useProducts(options?: UseProductsOptions) {
     let cancelled = false;
 
     const applyFallbackProducts = async () => {
+      if (!localDevMode && hasSupabaseConfig) {
+        memoryCache.set(cacheKey, { products: [], timestamp: Date.now() });
+        if (isDefaultQuery) {
+          writeCachedProducts([]);
+        }
+        setProducts([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
       const fallbackProducts = await getMockProducts();
 
       if (cancelled) {
@@ -117,12 +138,12 @@ export function useProducts(options?: UseProductsOptions) {
         ? filteredFallbackProducts.slice(0, limit)
         : filteredFallbackProducts;
 
-      memoryCache.set(cacheKey, { products: limitedFallbackProducts, timestamp: Date.now() });
+      memoryCache.set(cacheKey, { products: sanitizeStorefrontProducts(limitedFallbackProducts), timestamp: Date.now() });
       if (isDefaultQuery) {
         writeCachedProducts(limitedFallbackProducts);
       }
 
-      setProducts(limitedFallbackProducts);
+      setProducts(sanitizeStorefrontProducts(limitedFallbackProducts));
       setError(null);
       setLoading(false);
     };
@@ -141,7 +162,11 @@ export function useProducts(options?: UseProductsOptions) {
       }
 
       const cachedEntry = !forceRefresh ? memoryCache.get(cacheKey) : null;
-      if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_TTL_MS) {
+      if (
+        cachedEntry
+        && Date.now() - cachedEntry.timestamp < CACHE_TTL_MS
+        && (!isDefaultQuery || cachedEntry.products.length > 0)
+      ) {
         setProducts(cachedEntry.products);
         setLoading(false);
         setError(null);
@@ -150,7 +175,7 @@ export function useProducts(options?: UseProductsOptions) {
 
       if (isDefaultQuery) {
         const storageCache = !forceRefresh ? readCachedProducts() : null;
-        if (storageCache) {
+        if (storageCache && storageCache.length > 0) {
           memoryCache.set(cacheKey, { products: storageCache, timestamp: Date.now() });
           setProducts(storageCache);
           setLoading(false);
@@ -174,11 +199,12 @@ export function useProducts(options?: UseProductsOptions) {
           return;
         }
 
-        memoryCache.set(cacheKey, { products: nextProducts, timestamp: Date.now() });
+        const sanitizedProducts = sanitizeStorefrontProducts(nextProducts);
+        memoryCache.set(cacheKey, { products: sanitizedProducts, timestamp: Date.now() });
         if (isDefaultQuery) {
-          writeCachedProducts(nextProducts);
+          writeCachedProducts(sanitizedProducts);
         }
-        setProducts(nextProducts);
+        setProducts(sanitizedProducts);
       } catch (fetchError) {
         console.error('Could not load storefront products.', fetchError);
         await applyFallbackProducts();
